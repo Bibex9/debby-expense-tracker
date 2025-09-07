@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Expense Tracker Pro</title>
+  <title>Expense Tracker</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -13,17 +13,63 @@
     }
   </style>
 </head>
-<body class="bg-gray-100 p-4">
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-6">
 
-  <!-- your entire UI code here (unchanged) -->
+  <!-- Header -->
+  <h1 class="text-3xl font-bold text-blue-600 mb-6">💰 Expense Tracker</h1>
+
+  <!-- Expense Form -->
+  <form id="expense-form" class="bg-white p-6 rounded-xl shadow-md w-full max-w-md mb-6">
+    <div class="mb-4">
+      <label class="block text-gray-700">Description</label>
+      <input id="description" type="text" placeholder="e.g. Lunch" required
+        class="w-full border rounded p-2">
+    </div>
+    <div class="mb-4">
+      <label class="block text-gray-700">Amount</label>
+      <input id="amount" type="number" placeholder="e.g. 2500" required
+        class="w-full border rounded p-2">
+    </div>
+    <div class="mb-4">
+      <label class="block text-gray-700">Category</label>
+      <select id="category" required class="w-full border rounded p-2">
+        <option value="Food">Food</option>
+        <option value="Transport">Transport</option>
+        <option value="Bills">Bills</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+      ➕ Add Expense
+    </button>
+  </form>
+
+  <!-- Expenses Table -->
+  <div class="bg-white p-6 rounded-xl shadow-md w-full max-w-2xl">
+    <h2 class="text-xl font-semibold mb-4">Expenses</h2>
+    <table class="w-full border">
+      <thead>
+        <tr class="bg-gray-200">
+          <th class="border p-2">Description</th>
+          <th class="border p-2">Amount</th>
+          <th class="border p-2">Category</th>
+          <th class="border p-2">Date</th>
+          <th class="border p-2">Action</th>
+        </tr>
+      </thead>
+      <tbody id="expenses-list"></tbody>
+    </table>
+  </div>
 
   <!-- Firebase Scripts -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, setDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+    import { 
+      getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, serverTimestamp 
+    } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
-    // ✅ Your Firebase config
+    // 🔹 Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyBG42OrS2R0lt17SKfwKaTgycMsk_ssqNI",
       authDomain: "debby-expense-tracker-app.firebaseapp.com",
@@ -34,13 +80,66 @@
       measurementId: "G-CJEE12XD97"
     };
 
-    const appId = "debby-expense-tracker"; // custom appId (used in your Firestore paths)
+    // 🔹 Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
-    setLogLevel('debug');
 
-    // 🔹 rest of your Firebase logic here (no changes needed)
+    // Anonymous sign-in
+    signInAnonymously(auth)
+      .then(() => console.log("✅ Signed in anonymously"))
+      .catch(err => console.error("❌ Auth error:", err));
+
+    // 🔹 Form submit
+    const expenseForm = document.getElementById("expense-form");
+    const expensesList = document.getElementById("expenses-list");
+
+    expenseForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const description = document.getElementById("description").value;
+      const amount = parseFloat(document.getElementById("amount").value);
+      const category = document.getElementById("category").value;
+
+      try {
+        await addDoc(collection(db, "expenses"), {
+          description,
+          amount,
+          category,
+          date: serverTimestamp()
+        });
+        expenseForm.reset();
+      } catch (err) {
+        console.error("❌ Error adding expense:", err);
+      }
+    });
+
+    // 🔹 Realtime expenses list
+    onSnapshot(collection(db, "expenses"), (snapshot) => {
+      expensesList.innerHTML = "";
+      snapshot.forEach((docSnap) => {
+        const expense = docSnap.data();
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td class="border p-2">${expense.description}</td>
+          <td class="border p-2">₦${expense.amount}</td>
+          <td class="border p-2">${expense.category}</td>
+          <td class="border p-2">${expense.date?.toDate().toLocaleString() || "-"}</td>
+          <td class="border p-2">
+            <button class="bg-red-500 text-white px-2 py-1 rounded delete-btn" data-id="${docSnap.id}">🗑️</button>
+          </td>
+        `;
+        expensesList.appendChild(row);
+      });
+
+      // Delete functionality
+      document.querySelectorAll(".delete-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-id");
+          await deleteDoc(doc(db, "expenses", id));
+        });
+      });
+    });
   </script>
 </body>
 </html>
