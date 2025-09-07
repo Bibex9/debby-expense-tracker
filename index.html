@@ -1,131 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Expense Tracker (with Date)</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Expense Tracker Pro</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
-
-    // ✅ Firebase Config
-    const firebaseConfig = {
-      apiKey: "AIzaSyBG42OrS2R0lt17SKfwKaTgycMsk_ssqNI",
-      authDomain: "debby-expense-tracker-app.firebaseapp.com",
-      projectId: "debby-expense-tracker-app",
-      storageBucket: "debby-expense-tracker-app.appspot.com",
-      messagingSenderId: "527529857701",
-      appId: "1:527529857701:web:f01646b2afb442438d334c",
-      measurementId: "G-CJEE12XD97"
-    };
-
-    // ✅ Init
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    // DOM refs
-    const loginForm = document.getElementById("login-form");
-    const appSection = document.getElementById("app-section");
-    const welcomeUser = document.getElementById("welcome-user");
-    const expenseForm = document.getElementById("expense-form");
-    const expenseList = document.getElementById("expense-list");
-    const totalEl = document.getElementById("total");
-
-    let currentUser = "";
-    let total = 0;
-
-    // ✅ Step 1: User enters name
-    loginForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      currentUser = loginForm.username.value.trim();
-      if (!currentUser) return;
-
-      loginForm.classList.add("hidden");
-      appSection.classList.remove("hidden");
-      welcomeUser.textContent = `Welcome, ${currentUser}!`;
-
-      loadUserExpenses();
-    });
-
-    // ✅ Step 2: Add Expense
-    expenseForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const category = expenseForm.category.value.trim();
-      const amount = parseFloat(expenseForm.amount.value.trim());
-      const date = expenseForm.date.value;
-
-      if (!category || isNaN(amount) || !date) {
-        alert("Please fill in all fields.");
-        return;
-      }
-
-      await addDoc(collection(db, "expenses"), {
-        user: currentUser,
-        category,
-        amount,
-        date,
-        createdAt: new Date()
-      });
-
-      expenseForm.reset();
-    });
-
-    // ✅ Step 3: Load expenses for this user
-    function loadUserExpenses() {
-      const q = query(collection(db, "expenses"), where("user", "==", currentUser));
-      onSnapshot(q, (snapshot) => {
-        expenseList.innerHTML = "";
-        total = 0;
-
-        snapshot.forEach((docSnap) => {
-          const exp = docSnap.data();
-          const li = document.createElement("li");
-          li.className = "flex justify-between items-center bg-white shadow p-2 rounded mb-2";
-
-          li.innerHTML = `
-            <span>${exp.date} | ${exp.category}: ₦${exp.amount}</span>
-            <button class="text-red-500 hover:text-red-700">Delete</button>
-          `;
-
-          li.querySelector("button").addEventListener("click", async () => {
-            await deleteDoc(doc(db, "expenses", docSnap.id));
-          });
-
-          expenseList.appendChild(li);
-          total += exp.amount;
-        });
-
-        totalEl.textContent = `Total: ₦${total}`;
-      });
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f3f4f6;
     }
-  </script>
+  </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center p-6">
-  <!-- Login First -->
-  <form id="login-form" class="w-full max-w-md bg-white shadow-lg rounded-lg p-6">
-    <h1 class="text-2xl font-bold mb-4 text-center">💰 Expense Tracker</h1>
-    <input type="text" name="username" placeholder="Enter your name" class="w-full mb-4 p-2 border rounded" required>
-    <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">Continue</button>
-  </form>
-
-  <!-- App Section -->
-  <div id="app-section" class="hidden w-full max-w-md bg-white shadow-lg rounded-lg p-6">
-    <h2 id="welcome-user" class="text-xl font-bold mb-4"></h2>
+<body class="bg-gray-100 p-4">
+  <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-6 md:p-8">
     
-    <!-- Expense Form -->
-    <form id="expense-form" class="mb-6">
-      <input type="text" name="category" placeholder="Category (Food, Transport...)" class="w-full mb-2 p-2 border rounded" required>
-      <input type="number" step="0.01" name="amount" placeholder="Amount (₦)" class="w-full mb-2 p-2 border rounded" required>
-      <input type="date" name="date" class="w-full mb-2 p-2 border rounded" required>
-      <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">Add Expense</button>
-    </form>
+    <!-- Header -->
+    <h1 class="text-3xl md:text-4xl font-bold text-center text-gray-800 mb-2">
+      Expense Tracker
+    </h1>
+    <p class="text-center text-gray-500 mb-6">Track your spending by category.</p>
 
-    <!-- Expenses -->
-    <ul id="expense-list" class="mb-4"></ul>
+    <!-- User Info -->
+    <div class="mb-6 text-center text-gray-600">
+      <p>
+        <span id="userName" class="text-gray-800 font-semibold text-lg">Loading...</span>
+        <span class="text-sm"> | 
+          <span id="userId" class="font-mono text-xs bg-gray-200 px-2 py-1 rounded-full"></span>
+        </span>
+      </p>
+    </div>
 
-    <!-- Total -->
-    <p id="total" class="text-lg font-semibold text-center">Total: ₦0</p>
-  </div>
-</body>
-</html>
+    <!-- Update Name -->
+    <div class="bg-gray-50 rounded-xl p-5 shadow-inner mb-8">
+      <h2 class="text-xl font-semibold text-gray-700 mb-4">Update Your Name</h2>
+      <form id="nameForm" class="flex flex-col md:flex-row gap-4 items-end">
+        <div class="flex-grow w-full md:w-auto">
+          <label for="displayName" class="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+          <input type="text" id="displayName" placeholder="Enter your name"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
+        </div>
+        <div>
+          <button type="submit"
+            class="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-lg hover:bg-green-700 transition duration-300 ease-in-out transform hover:scale-105">
+            Save Name
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Add Expense -->
+    <div class="bg-gray-50 rounded-xl p-5 shadow-inner mb-8">
+      <h2 class="text-xl font-semibold text-gray-700 mb-4">Add a New Expense</h2>
+      <form id="expenseForm" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <input type="text" id="description" placeholder="Groceries, gas, rent..." required
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focu
