@@ -1,18 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Debby Expense Tracker</title>
-  <!-- Tailwind (local for production, not CDN) -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Firebase -->
   <script type="module">
-    // Import Firebase SDK
+    // Import Firebase
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      getDocs,
+      deleteDoc,
+      doc,
+      updateDoc,
+      onSnapshot
+    } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
-    // ✅ Your Firebase Config
+    // Your Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyBG42OrS2R0lt17SKfwKaTgycMsk_ssqNI",
       authDomain: "debby-expense-tracker-app.firebaseapp.com",
@@ -23,83 +30,134 @@
       measurementId: "G-CJEE12XD97"
     };
 
-    // ✅ Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const expensesCol = collection(db, "expenses");
 
-    // DOM Elements
+    // UI elements
     const form = document.getElementById("expense-form");
-    const expenseList = document.getElementById("expense-list");
-    const totalEl = document.getElementById("total");
+    const list = document.getElementById("expense-list");
+    const balanceEl = document.getElementById("balance");
+    const incomeEl = document.getElementById("income");
+    const expenseEl = document.getElementById("expense");
 
-    let total = 0;
+    let editingId = null;
 
-    // ✅ Add Expense
+    // Add or update expense
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const name = form.name.value.trim();
-      const amount = parseFloat(form.amount.value.trim());
+      const desc = form.description.value;
+      const amount = parseFloat(form.amount.value);
+      const category = form.category.value;
 
-      if (!name || isNaN(amount)) {
-        alert("Please enter valid expense details.");
-        return;
-      }
-
-      try {
-        await addDoc(collection(db, "expenses"), {
-          name,
+      if (editingId) {
+        const ref = doc(db, "expenses", editingId);
+        await updateDoc(ref, { description: desc, amount, category });
+        editingId = null;
+      } else {
+        await addDoc(expensesCol, {
+          description: desc,
           amount,
-          createdAt: new Date()
+          category,
+          date: new Date().toISOString()
         });
-        form.reset();
-      } catch (error) {
-        console.error("Error adding expense:", error);
       }
+
+      form.reset();
     });
 
-    // ✅ Render Expenses in Real-time
-    onSnapshot(collection(db, "expenses"), (snapshot) => {
-      expenseList.innerHTML = "";
-      total = 0;
-
-      snapshot.forEach((docSnap) => {
-        const expense = docSnap.data();
-        const li = document.createElement("li");
-        li.className = "flex justify-between items-center bg-white shadow p-2 rounded mb-2";
-
-        li.innerHTML = `
-          <span>${expense.name} - ₦${expense.amount}</span>
-          <button class="text-red-500 hover:text-red-700" data-id="${docSnap.id}">Delete</button>
-        `;
-
-        li.querySelector("button").addEventListener("click", async () => {
-          await deleteDoc(doc(db, "expenses", docSnap.id));
-        });
-
-        expenseList.appendChild(li);
-        total += expense.amount;
+    // Render expenses in real-time
+    onSnapshot(expensesCol, (snapshot) => {
+      let expenses = [];
+      snapshot.forEach((doc) => {
+        expenses.push({ id: doc.id, ...doc.data() });
       });
 
-      totalEl.textContent = `Total: ₦${total}`;
+      render(expenses);
     });
+
+    function render(expenses) {
+      list.innerHTML = "";
+      let income = 0, expense = 0;
+
+      expenses.forEach((ex) => {
+        if (ex.amount > 0) income += ex.amount;
+        else expense += Math.abs(ex.amount);
+
+        const li = document.createElement("li");
+        li.className =
+          "flex justify-between items-center p-3 border-b bg-white shadow-sm rounded mb-2";
+
+        li.innerHTML = `
+          <div>
+            <p class="font-semibold">${ex.description}</p>
+            <p class="text-sm text-gray-500">${ex.category} • ${new Date(ex.date).toLocaleDateString()}</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="${ex.amount > 0 ? "text-green-600" : "text-red-600"} font-bold">
+              ${ex.amount > 0 ? "+" : "-"}₦${Math.abs(ex.amount).toFixed(2)}
+            </span>
+            <button class="text-blue-500" onclick="editExpense('${ex.id}','${ex.description}',${ex.amount},'${ex.category}')">✏️</button>
+            <button class="text-red-500" onclick="deleteExpense('${ex.id}')">🗑️</button>
+          </div>
+        `;
+        list.appendChild(li);
+      });
+
+      const balance = income - expense;
+      balanceEl.textContent = "₦" + balance.toFixed(2);
+      incomeEl.textContent = "₦" + income.toFixed(2);
+      expenseEl.textContent = "₦" + expense.toFixed(2);
+    }
+
+    // Expose functions
+    window.deleteExpense = async (id) => {
+      await deleteDoc(doc(db, "expenses", id));
+    };
+
+    window.editExpense = (id, description, amount, category) => {
+      form.description.value = description;
+      form.amount.value = amount;
+      form.category.value = category;
+      editingId = id;
+    };
   </script>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center p-6">
-  <div class="w-full max-w-md bg-white shadow-lg rounded-lg p-6">
-    <h1 class="text-2xl font-bold mb-4 text-center">💰 Debby Expense Tracker</h1>
-    
-    <!-- Form -->
-    <form id="expense-form" class="mb-6">
-      <input type="text" name="name" placeholder="Expense name" class="w-full mb-2 p-2 border rounded" required>
-      <input type="number" step="0.01" name="amount" placeholder="Amount (₦)" class="w-full mb-2 p-2 border rounded" required>
-      <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">Add Expense</button>
-    </form>
+  <h1 class="text-3xl font-bold mb-6">💰 Debby Expense Tracker</h1>
 
-    <!-- Expenses -->
-    <ul id="expense-list" class="mb-4"></ul>
-
-    <!-- Total -->
-    <p id="total" class="text-lg font-semibold text-center">Total: ₦0</p>
+  <!-- Dashboard -->
+  <div class="grid grid-cols-3 gap-4 w-full max-w-3xl mb-6">
+    <div class="bg-white p-4 rounded-xl shadow text-center">
+      <p class="text-gray-500">Balance</p>
+      <p id="balance" class="text-xl font-bold">₦0.00</p>
+    </div>
+    <div class="bg-green-50 p-4 rounded-xl shadow text-center">
+      <p class="text-gray-500">Income</p>
+      <p id="income" class="text-xl font-bold text-green-600">₦0.00</p>
+    </div>
+    <div class="bg-red-50 p-4 rounded-xl shadow text-center">
+      <p class="text-gray-500">Expenses</p>
+      <p id="expense" class="text-xl font-bold text-red-600">₦0.00</p>
+    </div>
   </div>
+
+  <!-- Form -->
+  <form id="expense-form" class="bg-white p-6 rounded-xl shadow w-full max-w-3xl mb-6 grid grid-cols-4 gap-4">
+    <input type="text" name="description" placeholder="Description" required class="col-span-2 p-2 border rounded">
+    <input type="number" step="0.01" name="amount" placeholder="Amount" required class="p-2 border rounded">
+    <select name="category" required class="p-2 border rounded">
+      <option value="">Category</option>
+      <option>Food</option>
+      <option>Transport</option>
+      <option>Bills</option>
+      <option>Shopping</option>
+      <option>Other</option>
+    </select>
+    <button class="bg-blue-600 text-white rounded p-2 col-span-4">Save</button>
+  </form>
+
+  <!-- Expense List -->
+  <ul id="expense-list" class="w-full max-w-3xl"></ul>
 </body>
 </html>
