@@ -1,184 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Expense Tracker Pro</title>
+  <meta charset="UTF-8">
+  <title>Debby Expense Tracker</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    body {
-      font-family: 'Inter', sans-serif;
-      background-color: #f3f4f6;
-    }
-  </style>
-</head>
-<body class="bg-gray-100 p-4">
-  <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-6 md:p-8">
-    
-    <!-- Header -->
-    <h1 class="text-3xl md:text-4xl font-bold text-center text-gray-800 mb-2">
-      Expense Tracker
-    </h1>
-    <p class="text-center text-gray-500 mb-6">Track your spending by category.</p>
-
-    <!-- User Info -->
-    <div class="mb-6 text-center text-gray-600">
-      <p>
-        <span id="userName" class="text-gray-800 font-semibold text-lg">Loading...</span>
-        <span class="text-sm"> | 
-          <span id="userId" class="font-mono text-xs bg-gray-200 px-2 py-1 rounded-full"></span>
-        </span>
-      </p>
-    </div>
-
-    <!-- Update Name -->
-    <div class="bg-gray-50 rounded-xl p-5 shadow-inner mb-8">
-      <h2 class="text-xl font-semibold text-gray-700 mb-4">Update Your Name</h2>
-      <form id="nameForm" class="flex flex-col md:flex-row gap-4 items-end">
-        <div class="flex-grow w-full md:w-auto">
-          <label for="displayName" class="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
-          <input type="text" id="displayName" placeholder="Enter your name"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
-        </div>
-        <div>
-          <button type="submit"
-            class="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-lg hover:bg-green-700 transition duration-300 ease-in-out transform hover:scale-105">
-            Save Name
-          </button>
-        </div>
-      </form>
-    </div>
-
-    <!-- Add Expense -->
-    <div class="bg-gray-50 rounded-xl p-5 shadow-inner mb-8">
-      <h2 class="text-xl font-semibold text-gray-700 mb-4">Add a New Expense</h2>
-      <form id="expenseForm" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-        <div class="md:col-span-2">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-          <input type="text" id="description" placeholder="Groceries, gas, rent..." required
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Amount (₦)</label>
-          <input type="number" id="amount" step="0.01" placeholder="₦50.00" required
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-          <select id="category" required
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
-            <option value="" disabled selected>Select a category</option>
-            <option value="Food">Food</option>
-            <option value="Transport">Transport</option>
-            <option value="Bills">Bills</option>
-            <option value="Shopping">Shopping</option>
-            <option value="Entertainment">Entertainment</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
-          <input type="date" id="date" required
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
-        </div>
-        <div class="md:col-span-4 mt-2">
-          <button type="submit"
-            class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-lg hover:bg-blue-700 transition duration-300 ease-in-out transform hover:scale-105">
-            Add Expense
-          </button>
-        </div>
-      </form>
-    </div>
-
-    <!-- Dashboard -->
-    <div class="bg-gray-50 rounded-xl p-5 shadow-inner mb-8">
-      <h2 class="text-xl font-semibold text-gray-700 mb-4">Dashboard</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-white p-5 rounded-lg shadow-sm border">
-          <div class="text-sm font-medium text-gray-500">Total Spending</div>
-          <div id="totalAmount" class="text-3xl font-bold text-blue-600 mt-1">₦0.00</div>
-        </div>
-        <div class="bg-white p-5 rounded-lg shadow-sm border">
-          <div class="text-sm font-medium text-gray-500 mb-2">Spending by Category</div>
-          <div id="categoryTotals" class="space-y-2"></div>
-          <div id="noCategoryExpenses" class="hidden text-center text-gray-500 mt-4">No spending data yet.</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Expenses List -->
-    <div class="bg-gray-50 rounded-xl p-5 shadow-inner">
-      <h2 class="text-xl font-semibold text-gray-700 mb-4">Your Expenses</h2>
-      <div id="loading" class="text-center text-gray-500">Loading expenses...</div>
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 rounded-lg overflow-hidden">
-          <thead class="bg-gray-100">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="expensesList" class="bg-white divide-y divide-gray-200"></tbody>
-        </table>
-      </div>
-      <div id="noExpenses" class="hidden text-center text-gray-500 mt-4">No expenses added yet.</div>
-    </div>
-  </div>
-
-  <!-- Firebase & App Logic -->
   <script type="module">
+    // Import Firebase
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { 
+      getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, setDoc 
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // ✅ Your Firebase Config
+    // 🔑 Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyBG42OrS2R0lt17SKfwKaTgycMsk_ssqNI",
       authDomain: "debby-expense-tracker-app.firebaseapp.com",
       projectId: "debby-expense-tracker-app",
-      storageBucket: "debby-expense-tracker-app.appspot.com", // 🔧 corrected
+      storageBucket: "debby-expense-tracker-app.firebasestorage.app",
       messagingSenderId: "527529857701",
       appId: "1:527529857701:web:f01646b2afb442438d334c",
       measurementId: "G-CJEE12XD97"
     };
 
+    // 🔥 Initialize Firebase
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
     const auth = getAuth(app);
+    const db = getFirestore(app);
 
-    let userId = '';
-    let expensesCollectionRef;
-    let userDocRef;
+    // DOM elements
+    const expenseForm = document.getElementById("expenseForm");
+    const expensesList = document.getElementById("expensesList");
+    const nameForm = document.getElementById("nameForm");
+    const userNameSpan = document.getElementById("userName");
+    const userIdSpan = document.getElementById("userId");
 
-    const totalAmountSpan = document.getElementById('totalAmount');
-    const expensesListTbody = document.getElementById('expensesList');
-    const categoryTotalsDiv = document.getElementById('categoryTotals');
-    const loadingDiv = document.getElementById('loading');
-    const noExpensesDiv = document.getElementById('noExpenses');
-    const userIdSpan = document.getElementById('userId');
-    const userNameSpan = document.getElementById('userName');
-    const expenseForm = document.getElementById('expenseForm');
-    const nameForm = document.getElementById('nameForm');
+    let userId = null;
+    let userDocRef = null;
+    let expensesCollectionRef = null;
 
-    // Alerts
-    function customAlert(message) {
-      alert(message);
+    // ✅ Real-time listener for expenses
+    function setupRealtimeListener() {
+      onSnapshot(expensesCollectionRef, (snapshot) => {
+        expensesList.innerHTML = "";
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const li = document.createElement("li");
+          li.className = "flex justify-between items-center p-2 border rounded mb-2";
+          li.innerHTML = `
+            <span>${data.date} - ${data.category}: ₦${data.amount}</span>
+            <button class="bg-red-500 text-white px-2 py-1 rounded delete-btn" data-id="${docSnap.id}">Delete</button>
+          `;
+          expensesList.appendChild(li);
+        });
+
+        // Attach delete event
+        document.querySelectorAll(".delete-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const id = btn.getAttribute("data-id");
+            await deleteDoc(doc(db, "users", userId, "expenses", id));
+          });
+        });
+      });
     }
 
-    // Auth
+    // ✅ Auth state
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         userId = user.uid;
-        userIdSpan.textContent = userId.substring(0, 8) + '...';
-        expensesCollectionRef = collection(db, `users/${userId}/expenses`);
-        userDocRef = doc(db, `users/${userId}/profile`);
+        userIdSpan.textContent = userId.substring(0, 8) + "...";
 
-        // Load user profile
-        const unsubProfile = onSnapshot(userDocRef, (docSnap) => {
+        userDocRef = doc(db, "users", userId);
+        expensesCollectionRef = collection(db, "users", userId, "expenses");
+
+        // Load profile name
+        onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
             userNameSpan.textContent = data.displayName || "Anonymous";
@@ -193,89 +89,62 @@
       }
     });
 
-    // Save Name
-    nameForm.addEventListener('submit', async (e) => {
+    // ✅ Add expense
+    expenseForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const displayName = document.getElementById('displayName').value;
-      if (!displayName) return customAlert("Enter a name");
-      await setDoc(userDocRef, { displayName: displayName }, { merge: true });
-      userNameSpan.textContent = displayName;
-    });
+      const amount = document.getElementById("amount").value;
+      const category = document.getElementById("category").value;
+      const date = document.getElementById("date").value;
 
-    // Realtime Listener
-    function setupRealtimeListener() {
-      onSnapshot(expensesCollectionRef, (snapshot) => {
-        const expenses = [];
-        const categoryTotals = {};
-        let total = 0;
+      if (!amount || !category || !date) return alert("All fields required!");
 
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          expenses.push({ id: doc.id, ...data });
-          total += Number(data.amount);
-          const category = data.category || 'Other';
-          categoryTotals[category] = (categoryTotals[category] || 0) + Number(data.amount);
-        });
-
-        renderExpenses(expenses);
-        renderCategoryTotals(categoryTotals);
-        totalAmountSpan.textContent = `₦${total.toFixed(2)}`;
-        loadingDiv.classList.add('hidden');
-        noExpensesDiv.classList.toggle('hidden', expenses.length > 0);
+      await addDoc(expensesCollectionRef, {
+        amount: Number(amount),
+        category,
+        date
       });
-    }
 
-    // Render
-    function renderExpenses(expenses) {
-      expensesListTbody.innerHTML = '';
-      expenses.sort((a, b) => new Date(b.date) - new Date(a.date));
-      expenses.forEach(expense => {
-        const row = document.createElement('tr');
-        row.className = 'hover:bg-gray-50';
-        row.innerHTML = `
-          <td class="px-6 py-4">${expense.description}</td>
-          <td class="px-6 py-4">₦${Number(expense.amount).toFixed(2)}</td>
-          <td class="px-6 py-4">${expense.category}</td>
-          <td class="px-6 py-4">${new Date(expense.date).toLocaleDateString()}</td>
-          <td class="px-6 py-4">
-            <button class="delete-btn text-red-600" data-id="${expense.id}">Delete</button>
-          </td>
-        `;
-        expensesListTbody.appendChild(row);
-      });
-    }
-
-    function renderCategoryTotals(categoryTotals) {
-      categoryTotalsDiv.innerHTML = '';
-      const sorted = Object.entries(categoryTotals).sort((a,b) => b[1]-a[1]);
-      if (sorted.length === 0) return document.getElementById('noCategoryExpenses').classList.remove('hidden');
-      document.getElementById('noCategoryExpenses').classList.add('hidden');
-      sorted.forEach(([cat, amt]) => {
-        const div = document.createElement('div');
-        div.className = 'flex justify-between';
-        div.innerHTML = `<span>${cat}</span><span class="font-bold text-blue-600">₦${amt.toFixed(2)}</span>`;
-        categoryTotalsDiv.appendChild(div);
-      });
-    }
-
-    // Add Expense
-    expenseForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const description = document.getElementById('description').value;
-      const amount = document.getElementById('amount').value;
-      const category = document.getElementById('category').value;
-      const date = document.getElementById('date').value;
-      await addDoc(expensesCollectionRef, { description, amount: parseFloat(amount), category, date });
       expenseForm.reset();
     });
 
-    // Delete Expense
-    expensesListTbody.addEventListener('click', async (e) => {
-      if (e.target.classList.contains('delete-btn')) {
-        const id = e.target.dataset.id;
-        await deleteDoc(doc(db, `users/${userId}/expenses`, id));
-      }
+    // ✅ Update profile name
+    nameForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const displayName = document.getElementById("displayName").value;
+      if (!displayName) return alert("Enter a name");
+
+      await setDoc(userDocRef, { displayName }, { merge: true });
+      userNameSpan.textContent = displayName;
+      nameForm.reset();
     });
   </script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-lg bg-white p-6 rounded-xl shadow-lg">
+    <h1 class="text-2xl font-bold mb-4 text-center">💰 Debby Expense Tracker</h1>
+
+    <!-- User Profile -->
+    <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+      <p><strong>User:</strong> <span id="userName">Loading...</span></p>
+      <p class="text-sm text-gray-500">ID: <span id="userId"></span></p>
+    </div>
+
+    <!-- Update Name -->
+    <form id="nameForm" class="flex gap-2 mb-4">
+      <input id="displayName" type="text" placeholder="Enter your name" class="flex-1 border p-2 rounded">
+      <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Save</button>
+    </form>
+
+    <!-- Add Expense -->
+    <form id="expenseForm" class="grid gap-2 mb-6">
+      <input id="amount" type="number" placeholder="Amount (₦)" class="border p-2 rounded">
+      <input id="category" type="text" placeholder="Category" class="border p-2 rounded">
+      <input id="date" type="date" class="border p-2 rounded">
+      <button type="submit" class="bg-green-500 text-white py-2 rounded">Add Expense</button>
+    </form>
+
+    <!-- Expenses List -->
+    <ul id="expensesList" class="space-y-2"></ul>
+  </div>
 </body>
 </html>
