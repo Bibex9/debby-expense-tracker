@@ -3,24 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Debby Expense Tracker</title>
+  <title>Expense Tracker</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module">
-    // Import Firebase
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { 
-      getFirestore, collection, addDoc, getDocs, deleteDoc, doc 
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-    import { 
-      getAuth, signInAnonymously, onAuthStateChanged 
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      getDocs,
+      deleteDoc,
+      doc,
+      query,
+      where
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyBG42OrS2R0lt17SKfwKaTgycMsk_ssqNI",
       authDomain: "debby-expense-tracker-app.firebaseapp.com",
       projectId: "debby-expense-tracker-app",
-      storageBucket: "debby-expense-tracker-app.firebasestorage.app",
+      storageBucket: "debby-expense-tracker-app.appspot.com",
       messagingSenderId: "527529857701",
       appId: "1:527529857701:web:f01646b2afb442438d334c",
       measurementId: "G-CJEE12XD97"
@@ -28,121 +31,142 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    const auth = getAuth(app);
 
-    let userId = null;
+    let currentUser = "";
 
-    const expenseForm = document.getElementById("expense-form");
-    const expensesList = document.getElementById("expenses-list");
-    const totalEl = document.getElementById("total");
-    const errorBox = document.getElementById("error-box");
-
-    // Show error messages visibly
-    function showError(msg) {
-      errorBox.innerText = "⚠️ " + msg;
-      errorBox.classList.remove("hidden");
-      setTimeout(() => errorBox.classList.add("hidden"), 5000);
-    }
-
-    // Fetch & render expenses
-    async function renderExpenses() {
-      expensesList.innerHTML = "";
-      let total = 0;
-      try {
-        const snapshot = await getDocs(collection(db, "users", userId, "expenses"));
-        snapshot.forEach((docSnap) => {
-          const exp = docSnap.data();
-          total += Number(exp.amount);
-          const li = document.createElement("li");
-          li.className = "flex justify-between bg-white shadow rounded p-3 mb-2";
-          li.innerHTML = `
-            <span><strong>${exp.name}</strong> (${exp.category}) - ₦${exp.amount} on ${exp.date}</span>
-            <button class="text-red-600" data-id="${docSnap.id}">❌</button>
-          `;
-          expensesList.appendChild(li);
-        });
-        totalEl.innerText = "₦" + total;
-      } catch (e) {
-        showError("Failed to fetch expenses: " + e.message);
-      }
-    }
-
-    // Add expense
-    expenseForm.addEventListener("submit", async (e) => {
+    // Set username
+    window.setUsername = function (e) {
       e.preventDefault();
-      const name = expenseForm.name.value.trim();
-      const amount = parseFloat(expenseForm.amount.value);
-      const category = expenseForm.category.value;
-      const date = expenseForm.date.value;
+      const username = document.getElementById("username").value.trim();
+      if (!username) {
+        alert("Please enter a username");
+        return;
+      }
+      currentUser = username;
+      document.getElementById("user-section").classList.add("hidden");
+      document.getElementById("tracker-section").classList.remove("hidden");
+      fetchExpenses();
+    };
 
-      if (!name || !amount || !date) {
-        showError("All fields are required!");
+    // Add Expense
+    async function addExpense(e) {
+      e.preventDefault();
+      const amount = document.getElementById("amount").value;
+      const category = document.getElementById("category").value;
+      const date = document.getElementById("date").value;
+
+      if (!currentUser || !amount || !category || !date) {
+        alert("Fill all fields");
         return;
       }
 
-      try {
-        await addDoc(collection(db, "users", userId, "expenses"), {
-          name, amount, category, date
-        });
-        expenseForm.reset();
-        renderExpenses();
-      } catch (e) {
-        showError("Failed to add expense: " + e.message);
-      }
-    });
+      await addDoc(collection(db, "expenses"), {
+        user: currentUser,
+        amount: parseFloat(amount),
+        category,
+        date
+      });
 
-    // Delete expense
-    expensesList.addEventListener("click", async (e) => {
-      if (e.target.tagName === "BUTTON") {
-        const id = e.target.dataset.id;
-        try {
-          await deleteDoc(doc(db, "users", userId, "expenses", id));
-          renderExpenses();
-        } catch (e) {
-          showError("Failed to delete expense: " + e.message);
-        }
-      }
-    });
+      document.getElementById("expense-form").reset();
+      fetchExpenses();
+    }
 
-    // Auth
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        userId = user.uid;
-        renderExpenses();
-      } else {
-        signInAnonymously(auth).catch((e) => {
-          showError("Auth failed: " + e.message);
-        });
-      }
-    });
+    // Fetch Expenses
+    async function fetchExpenses() {
+      const q = query(collection(db, "expenses"), where("user", "==", currentUser));
+      const querySnapshot = await getDocs(q);
+      const expenseList = document.getElementById("expense-list");
+      const totalDisplay = document.getElementById("total-expenses");
+
+      expenseList.innerHTML = "";
+      let total = 0;
+
+      querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        total += data.amount;
+
+        const li = document.createElement("li");
+        li.className =
+          "flex justify-between items-center bg-white shadow p-3 rounded-lg mb-2";
+
+        li.innerHTML = `
+          <div>
+            <p class="font-semibold">$${data.amount} - ${data.category}</p>
+            <p class="text-sm text-gray-600">${data.date}</p>
+          </div>
+          <button class="bg-red-500 text-white px-3 py-1 rounded" onclick="deleteExpense('${docSnap.id}')">Delete</button>
+        `;
+        expenseList.appendChild(li);
+      });
+
+      totalDisplay.textContent = "Total: $" + total.toFixed(2);
+    }
+
+    // Delete Expense
+    window.deleteExpense = async function (id) {
+      await deleteDoc(doc(db, "expenses", id));
+      fetchExpenses();
+    };
+
+    window.addExpense = addExpense;
   </script>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center">
-  <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-lg">
-    <h1 class="text-2xl font-bold mb-4 text-center">💰 Debby Expense Tracker</h1>
+  <div class="w-full max-w-md bg-white rounded-xl shadow-lg p-6">
+    <h1 class="text-2xl font-bold mb-4 text-center">Expense Tracker</h1>
 
-    <!-- Error box -->
-    <div id="error-box" class="hidden bg-red-100 text-red-700 p-2 mb-4 rounded"></div>
+    <!-- Username Section -->
+    <div id="user-section">
+      <form onsubmit="setUsername(event)" class="space-y-3">
+        <input
+          id="username"
+          type="text"
+          placeholder="Enter your username"
+          class="w-full border p-2 rounded"
+        />
+        <button
+          type="submit"
+          class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
+        >
+          Continue
+        </button>
+      </form>
+    </div>
 
-    <!-- Form -->
-    <form id="expense-form" class="space-y-3">
-      <input type="text" name="name" placeholder="Expense name" class="w-full border p-2 rounded" />
-      <input type="number" name="amount" placeholder="Amount" class="w-full border p-2 rounded" />
-      <input type="date" name="date" class="w-full border p-2 rounded" />
-      <select name="category" class="w-full border p-2 rounded">
-        <option value="Food">Food</option>
-        <option value="Transport">Transport</option>
-        <option value="Bills">Bills</option>
-        <option value="Other">Other</option>
-      </select>
-      <button class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Add Expense</button>
-    </form>
+    <!-- Tracker Section -->
+    <div id="tracker-section" class="hidden">
+      <form id="expense-form" class="space-y-3" onsubmit="addExpense(event)">
+        <input
+          id="amount"
+          type="number"
+          placeholder="Amount"
+          class="w-full border p-2 rounded"
+        />
+        <input
+          id="category"
+          type="text"
+          placeholder="Category"
+          class="w-full border p-2 rounded"
+        />
+        <input
+          id="date"
+          type="date"
+          class="w-full border p-2 rounded"
+        />
+        <button
+          type="submit"
+          class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600"
+        >
+          Add Expense
+        </button>
+      </form>
 
-    <!-- Expense list -->
-    <ul id="expenses-list" class="mt-4"></ul>
+      <h2 class="text-xl font-semibold mt-6 mb-2">Expenses</h2>
+      <ul id="expense-list" class="space-y-2"></ul>
 
-    <!-- Total -->
-    <div class="mt-4 text-xl font-semibold text-right">Total: <span id="total">₦0</span></div>
+      <!-- Total Expenses -->
+      <p id="total-expenses" class="text-lg font-bold mt-4 text-right">Total: $0.00</p>
+    </div>
   </div>
 </body>
 </html>
