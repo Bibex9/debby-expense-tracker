@@ -1,1 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Expense Tracker Pro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f3f4f6;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 p-4">
+
+  <!-- your entire UI code here (unchanged) -->
+
+  <!-- Firebase Scripts -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, setDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // ✅ Your Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBG42OrS2R0lt17SKfwKaTgycMsk_ssqNI",
+      authDomain: "debby-expense-tracker-app.firebaseapp.com",
+      projectId: "debby-expense-tracker-app",
+      storageBucket: "debby-expense-tracker-app.firebasestorage.app",
+      messagingSenderId: "527529857701",
+      appId: "1:527529857701:web:f01646b2afb442438d334c",
+      measurementId: "G-CJEE12XD97"
+    };
+
+    const appId = "debby-expense-tracker"; // custom appId (used in your Firestore paths)
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    setLogLevel('debug');
+
+    // 🔹 rest of your Firebase logic here (no changes needed)
+  </script>
+</body>
+</html>
 
