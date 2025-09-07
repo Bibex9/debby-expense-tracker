@@ -34,6 +34,11 @@
 
     let currentUser = "";
 
+    // Format Naira with commas
+    function formatNaira(amount) {
+      return "₦" + amount.toLocaleString("en-NG", { minimumFractionDigits: 2 });
+    }
+
     // Set username
     window.setUsername = function (e) {
       e.preventDefault();
@@ -45,6 +50,7 @@
       currentUser = username;
       document.getElementById("user-section").classList.add("hidden");
       document.getElementById("tracker-section").classList.remove("hidden");
+      document.getElementById("welcome-user").textContent = `Hi, ${username}!`;
       fetchExpenses();
     };
 
@@ -87,19 +93,19 @@
 
         const li = document.createElement("li");
         li.className =
-          "flex justify-between items-center bg-white shadow p-3 rounded-lg mb-2";
+          "flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white shadow p-4 rounded-lg mb-3";
 
         li.innerHTML = `
           <div>
-            <p class="font-semibold">$${data.amount} - ${data.category}</p>
+            <p class="font-semibold">${formatNaira(data.amount)} - ${data.category}</p>
             <p class="text-sm text-gray-600">${data.date}</p>
           </div>
-          <button class="bg-red-500 text-white px-3 py-1 rounded" onclick="deleteExpense('${docSnap.id}')">Delete</button>
+          <button class="mt-2 sm:mt-0 bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600" onclick="deleteExpense('${docSnap.id}')">Delete</button>
         `;
         expenseList.appendChild(li);
       });
 
-      totalDisplay.textContent = "Total: $" + total.toFixed(2);
+      totalDisplay.textContent = "Total: " + formatNaira(total);
     }
 
     // Delete Expense
@@ -111,8 +117,8 @@
     window.addExpense = addExpense;
   </script>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
-  <div class="w-full max-w-md bg-white rounded-xl shadow-lg p-6">
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-lg bg-white rounded-xl shadow-lg p-6">
     <h1 class="text-2xl font-bold mb-4 text-center">Expense Tracker</h1>
 
     <!-- Username Section -->
@@ -135,27 +141,29 @@
 
     <!-- Tracker Section -->
     <div id="tracker-section" class="hidden">
-      <form id="expense-form" class="space-y-3" onsubmit="addExpense(event)">
+      <p id="welcome-user" class="text-lg font-semibold mb-4"></p>
+
+      <form id="expense-form" class="grid grid-cols-1 sm:grid-cols-2 gap-3" onsubmit="addExpense(event)">
         <input
           id="amount"
           type="number"
-          placeholder="Amount"
-          class="w-full border p-2 rounded"
+          placeholder="Amount (₦)"
+          class="border p-2 rounded w-full"
         />
         <input
           id="category"
           type="text"
           placeholder="Category"
-          class="w-full border p-2 rounded"
+          class="border p-2 rounded w-full"
         />
         <input
           id="date"
           type="date"
-          class="w-full border p-2 rounded"
+          class="border p-2 rounded w-full sm:col-span-2"
         />
         <button
           type="submit"
-          class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600"
+          class="sm:col-span-2 bg-green-500 text-white p-2 rounded hover:bg-green-600"
         >
           Add Expense
         </button>
@@ -165,7 +173,7 @@
       <ul id="expense-list" class="space-y-2"></ul>
 
       <!-- Total Expenses -->
-      <p id="total-expenses" class="text-lg font-bold mt-4 text-right">Total: $0.00</p>
+      <p id="total-expenses" class="text-lg font-bold mt-4 text-right">Total: ₦0.00</p>
     </div>
   </div>
 </body>
