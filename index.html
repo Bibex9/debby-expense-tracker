@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Expense Tracker with Name & Category</title>
+  <title>Expense Tracker (with Date)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
     // ✅ Firebase Config
     const firebaseConfig = {
@@ -24,73 +24,100 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const form = document.getElementById("expense-form");
+    // DOM refs
+    const loginForm = document.getElementById("login-form");
+    const appSection = document.getElementById("app-section");
+    const welcomeUser = document.getElementById("welcome-user");
+    const expenseForm = document.getElementById("expense-form");
     const expenseList = document.getElementById("expense-list");
     const totalEl = document.getElementById("total");
 
+    let currentUser = "";
     let total = 0;
 
-    // ✅ Add Expense
-    form.addEventListener("submit", async (e) => {
+    // ✅ Step 1: User enters name
+    loginForm.addEventListener("submit", (e) => {
       e.preventDefault();
-      const user = form.user.value.trim();
-      const category = form.category.value.trim();
-      const amount = parseFloat(form.amount.value.trim());
+      currentUser = loginForm.username.value.trim();
+      if (!currentUser) return;
 
-      if (!user || !category || isNaN(amount)) {
-        alert("Fill all fields!");
+      loginForm.classList.add("hidden");
+      appSection.classList.remove("hidden");
+      welcomeUser.textContent = `Welcome, ${currentUser}!`;
+
+      loadUserExpenses();
+    });
+
+    // ✅ Step 2: Add Expense
+    expenseForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const category = expenseForm.category.value.trim();
+      const amount = parseFloat(expenseForm.amount.value.trim());
+      const date = expenseForm.date.value;
+
+      if (!category || isNaN(amount) || !date) {
+        alert("Please fill in all fields.");
         return;
       }
 
-      try {
-        await addDoc(collection(db, "expenses"), {
-          user,
-          category,
-          amount,
-          createdAt: new Date()
-        });
-        form.reset();
-      } catch (err) {
-        console.error("Error:", err);
-      }
-    });
-
-    // ✅ Live Updates
-    onSnapshot(collection(db, "expenses"), (snapshot) => {
-      expenseList.innerHTML = "";
-      total = 0;
-
-      snapshot.forEach((docSnap) => {
-        const exp = docSnap.data();
-        const li = document.createElement("li");
-        li.className = "flex justify-between items-center bg-white shadow p-2 rounded mb-2";
-
-        li.innerHTML = `
-          <span><b>${exp.user}</b> - ${exp.category}: ₦${exp.amount}</span>
-          <button class="text-red-500 hover:text-red-700" data-id="${docSnap.id}">Delete</button>
-        `;
-
-        li.querySelector("button").addEventListener("click", async () => {
-          await deleteDoc(doc(db, "expenses", docSnap.id));
-        });
-
-        expenseList.appendChild(li);
-        total += exp.amount;
+      await addDoc(collection(db, "expenses"), {
+        user: currentUser,
+        category,
+        amount,
+        date,
+        createdAt: new Date()
       });
 
-      totalEl.textContent = `Total: ₦${total}`;
+      expenseForm.reset();
     });
+
+    // ✅ Step 3: Load expenses for this user
+    function loadUserExpenses() {
+      const q = query(collection(db, "expenses"), where("user", "==", currentUser));
+      onSnapshot(q, (snapshot) => {
+        expenseList.innerHTML = "";
+        total = 0;
+
+        snapshot.forEach((docSnap) => {
+          const exp = docSnap.data();
+          const li = document.createElement("li");
+          li.className = "flex justify-between items-center bg-white shadow p-2 rounded mb-2";
+
+          li.innerHTML = `
+            <span>${exp.date} | ${exp.category}: ₦${exp.amount}</span>
+            <button class="text-red-500 hover:text-red-700">Delete</button>
+          `;
+
+          li.querySelector("button").addEventListener("click", async () => {
+            await deleteDoc(doc(db, "expenses", docSnap.id));
+          });
+
+          expenseList.appendChild(li);
+          total += exp.amount;
+        });
+
+        totalEl.textContent = `Total: ₦${total}`;
+      });
+    }
   </script>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center p-6">
-  <div class="w-full max-w-md bg-white shadow-lg rounded-lg p-6">
+  <!-- Login First -->
+  <form id="login-form" class="w-full max-w-md bg-white shadow-lg rounded-lg p-6">
     <h1 class="text-2xl font-bold mb-4 text-center">💰 Expense Tracker</h1>
+    <input type="text" name="username" placeholder="Enter your name" class="w-full mb-4 p-2 border rounded" required>
+    <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">Continue</button>
+  </form>
+
+  <!-- App Section -->
+  <div id="app-section" class="hidden w-full max-w-md bg-white shadow-lg rounded-lg p-6">
+    <h2 id="welcome-user" class="text-xl font-bold mb-4"></h2>
     
-    <!-- Form -->
+    <!-- Expense Form -->
     <form id="expense-form" class="mb-6">
-      <input type="text" name="user" placeholder="Your Name" class="w-full mb-2 p-2 border rounded" required>
       <input type="text" name="category" placeholder="Category (Food, Transport...)" class="w-full mb-2 p-2 border rounded" required>
       <input type="number" step="0.01" name="amount" placeholder="Amount (₦)" class="w-full mb-2 p-2 border rounded" required>
+      <input type="date" name="date" class="w-full mb-2 p-2 border rounded" required>
       <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">Add Expense</button>
     </form>
 
