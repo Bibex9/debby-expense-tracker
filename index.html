@@ -126,4 +126,23 @@
 
     <!-- Form -->
     <form id="expense-form" class="space-y-3">
-      <input type="text" name="name" placeh
+      <input type="text" name="name" placeholder="Expense name" class="w-full border p-2 rounded" />
+      <input type="number" name="amount" placeholder="Amount" class="w-full border p-2 rounded" />
+      <input type="date" name="date" class="w-full border p-2 rounded" />
+      <select name="category" class="w-full border p-2 rounded">
+        <option value="Food">Food</option>
+        <option value="Transport">Transport</option>
+        <option value="Bills">Bills</option>
+        <option value="Other">Other</option>
+      </select>
+      <button class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Add Expense</button>
+    </form>
+
+    <!-- Expense list -->
+    <ul id="expenses-list" class="mt-4"></ul>
+
+    <!-- Total -->
+    <div class="mt-4 text-xl font-semibold text-right">Total: <span id="total">₦0</span></div>
+  </div>
+</body>
+</html>
