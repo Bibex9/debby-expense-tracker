@@ -30,7 +30,7 @@
     // DOM elements
     const expenseForm = document.getElementById("expenseForm");
     const myExpensesList = document.getElementById("myExpensesList");
-    const allExpensesList = document.getElementById("allExpensesList");
+    const allExpensesTotal = document.getElementById("allExpensesTotal");
     const nameForm = document.getElementById("nameForm");
     const userNameSpan = document.getElementById("userName");
     const userIdSpan = document.getElementById("userId");
@@ -40,19 +40,15 @@
     let myExpensesCollectionRef = null;
     const allExpensesCollectionRef = collection(db, "expenses"); // 🌍 General expenses
 
-    // ✅ Load general (public) expenses
+    // ✅ Load general (public) total expenses
     function loadAllExpenses() {
       onSnapshot(allExpensesCollectionRef, (snapshot) => {
-        allExpensesList.innerHTML = "";
+        let total = 0;
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
-          const li = document.createElement("li");
-          li.className = "flex justify-between items-center p-2 border rounded mb-2";
-          li.innerHTML = `
-            <span>${data.date} - ${data.category} (${data.description || "No description"}) : ₦${data.amount} by ${data.userName || "Anonymous"}</span>
-          `;
-          allExpensesList.appendChild(li);
+          total += Number(data.amount) || 0;
         });
+        allExpensesTotal.textContent = `₦${total.toFixed(2)}`;
       });
     }
 
@@ -165,7 +161,15 @@
     <!-- Add Expense -->
     <form id="expenseForm" class="grid gap-2 mb-6">
       <input id="amount" type="number" placeholder="Amount (₦)" class="border p-2 rounded">
-      <input id="category" type="text" placeholder="Category" class="border p-2 rounded">
+      <select id="category" class="border p-2 rounded">
+        <option value="">-- Select Category --</option>
+        <option value="Food">🍔 Food</option>
+        <option value="Transport">🚗 Transport</option>
+        <option value="Bills">💡 Bills</option>
+        <option value="Shopping">🛍️ Shopping</option>
+        <option value="Entertainment">🎬 Entertainment</option>
+        <option value="Other">🔖 Other</option>
+      </select>
       <input id="description" type="text" placeholder="Description (optional)" class="border p-2 rounded">
       <input id="date" type="date" class="border p-2 rounded">
       <button type="submit" class="bg-green-500 text-white py-2 rounded">Add Expense</button>
@@ -176,8 +180,10 @@
     <ul id="myExpensesList" class="space-y-2 mb-6"></ul>
 
     <!-- All Expenses -->
-    <h2 class="text-lg font-semibold mb-2">🌍 All Expenses</h2>
-    <ul id="allExpensesList" class="space-y-2"></ul>
+    <h2 class="text-lg font-semibold mb-2">🌍 All Expenses (Total)</h2>
+    <div class="p-3 bg-gray-50 rounded text-center font-bold text-xl text-blue-600">
+      <span id="allExpensesTotal">₦0.00</span>
+    </div>
   </div>
 </body>
 </html>
