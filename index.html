@@ -5,7 +5,6 @@
   <title>Debby Expense Tracker</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module">
-    // Import Firebase
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { 
@@ -30,35 +29,54 @@
 
     // DOM elements
     const expenseForm = document.getElementById("expenseForm");
-    const expensesList = document.getElementById("expensesList");
+    const myExpensesList = document.getElementById("myExpensesList");
+    const allExpensesList = document.getElementById("allExpensesList");
     const nameForm = document.getElementById("nameForm");
     const userNameSpan = document.getElementById("userName");
     const userIdSpan = document.getElementById("userId");
 
     let userId = null;
     let userDocRef = null;
-    let expensesCollectionRef = null;
+    let myExpensesCollectionRef = null;
+    const allExpensesCollectionRef = collection(db, "expenses"); // 🌍 General expenses
 
-    // ✅ Real-time listener for expenses
-    function setupRealtimeListener() {
-      onSnapshot(expensesCollectionRef, (snapshot) => {
-        expensesList.innerHTML = "";
+    // ✅ Load general (public) expenses
+    function loadAllExpenses() {
+      onSnapshot(allExpensesCollectionRef, (snapshot) => {
+        allExpensesList.innerHTML = "";
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
           const li = document.createElement("li");
           li.className = "flex justify-between items-center p-2 border rounded mb-2";
           li.innerHTML = `
-            <span>${data.date} - ${data.category}: ₦${data.amount}</span>
+            <span>${data.date} - ${data.category} (${data.description || "No description"}) : ₦${data.amount} by ${data.userName || "Anonymous"}</span>
+          `;
+          allExpensesList.appendChild(li);
+        });
+      });
+    }
+
+    // ✅ Load personal expenses
+    function loadMyExpenses() {
+      onSnapshot(myExpensesCollectionRef, (snapshot) => {
+        myExpensesList.innerHTML = "";
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const li = document.createElement("li");
+          li.className = "flex justify-between items-center p-2 border rounded mb-2";
+          li.innerHTML = `
+            <span>${data.date} - ${data.category} (${data.description || "No description"}) : ₦${data.amount}</span>
             <button class="bg-red-500 text-white px-2 py-1 rounded delete-btn" data-id="${docSnap.id}">Delete</button>
           `;
-          expensesList.appendChild(li);
+          myExpensesList.appendChild(li);
         });
 
-        // Attach delete event
+        // attach delete event
         document.querySelectorAll(".delete-btn").forEach((btn) => {
           btn.addEventListener("click", async () => {
             const id = btn.getAttribute("data-id");
             await deleteDoc(doc(db, "users", userId, "expenses", id));
+            await deleteDoc(doc(db, "expenses", id)); // also remove from general
           });
         });
       });
@@ -71,7 +89,7 @@
         userIdSpan.textContent = userId.substring(0, 8) + "...";
 
         userDocRef = doc(db, "users", userId);
-        expensesCollectionRef = collection(db, "users", userId, "expenses");
+        myExpensesCollectionRef = collection(db, "users", userId, "expenses");
 
         // Load profile name
         onSnapshot(userDocRef, (docSnap) => {
@@ -83,7 +101,8 @@
           }
         });
 
-        setupRealtimeListener();
+        loadMyExpenses();
+        loadAllExpenses();
       } else {
         await signInAnonymously(auth);
       }
@@ -94,15 +113,23 @@
       e.preventDefault();
       const amount = document.getElementById("amount").value;
       const category = document.getElementById("category").value;
+      const description = document.getElementById("description").value;
       const date = document.getElementById("date").value;
 
       if (!amount || !category || !date) return alert("All fields required!");
 
-      await addDoc(expensesCollectionRef, {
+      const expenseData = {
         amount: Number(amount),
         category,
-        date
-      });
+        description,
+        date,
+        userId,
+        userName: userNameSpan.textContent
+      };
+
+      // Save in both user’s collection + general collection
+      const newExpenseRef = await addDoc(myExpensesCollectionRef, expenseData);
+      await setDoc(doc(db, "expenses", newExpenseRef.id), expenseData);
 
       expenseForm.reset();
     });
@@ -120,7 +147,7 @@
   </script>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
-  <div class="w-full max-w-lg bg-white p-6 rounded-xl shadow-lg">
+  <div class="w-full max-w-3xl bg-white p-6 rounded-xl shadow-lg">
     <h1 class="text-2xl font-bold mb-4 text-center">💰 Debby Expense Tracker</h1>
 
     <!-- User Profile -->
@@ -139,12 +166,18 @@
     <form id="expenseForm" class="grid gap-2 mb-6">
       <input id="amount" type="number" placeholder="Amount (₦)" class="border p-2 rounded">
       <input id="category" type="text" placeholder="Category" class="border p-2 rounded">
+      <input id="description" type="text" placeholder="Description (optional)" class="border p-2 rounded">
       <input id="date" type="date" class="border p-2 rounded">
       <button type="submit" class="bg-green-500 text-white py-2 rounded">Add Expense</button>
     </form>
 
-    <!-- Expenses List -->
-    <ul id="expensesList" class="space-y-2"></ul>
+    <!-- My Expenses -->
+    <h2 class="text-lg font-semibold mb-2">📌 My Expenses</h2>
+    <ul id="myExpensesList" class="space-y-2 mb-6"></ul>
+
+    <!-- All Expenses -->
+    <h2 class="text-lg font-semibold mb-2">🌍 All Expenses</h2>
+    <ul id="allExpensesList" class="space-y-2"></ul>
   </div>
 </body>
 </html>
