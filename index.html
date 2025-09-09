@@ -1,189 +1,367 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Debby Expense Tracker</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { 
-      getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, setDoc 
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import React, { useState, useEffect } from 'react';
+import {
+  Plus,
+  Trash2,
+  Edit,
+  User,
+  LogOut,
+  Calendar,
+  DollarSign,
+  AlignLeft,
+  List,
+  RefreshCw,
+  Home,
+  PieChart,
+  TrendingUp,
+  Target,
+  Settings,
+  Bell,
+  Search,
+  Filter,
+  Download,
+  Upload,
+  CreditCard,
+  Wallet,
+  Receipt,
+  BarChart3,
+  LineChart,
+  ArrowUpRight,
+  ArrowDownRight,
+  Eye,
+  EyeOff,
+  Sun,
+  Moon,
+  ChevronDown,
+  MapPin,
+  Tag,
+  Camera
+} from 'lucide-react';
 
-    // 🔑 Firebase config
-    const firebaseConfig = {
-      apiKey: "AIzaSyBG42OrS2R0lt17SKfwKaTgycMsk_ssqNI",
-      authDomain: "debby-expense-tracker-app.firebaseapp.com",
-      projectId: "debby-expense-tracker-app",
-      storageBucket: "debby-expense-tracker-app.firebasestorage.app",
-      messagingSenderId: "527529857701",
-      appId: "1:527529857701:web:f01646b2afb442438d334c",
-      measurementId: "G-CJEE12XD97"
+// Firebase imports
+import { auth, db } from "./firebase";
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut 
+} from "firebase/auth";
+import { 
+  collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, where 
+} from "firebase/firestore";
+
+const App = () => {
+  // Core state
+  const [user, setUser] = useState(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
+  const [currentView, setCurrentView] = useState('dashboard');
+  
+  // Auth state
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [showLogin, setShowLogin] = useState(true);
+  
+  // Expense state
+  const [expenses, setExpenses] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [title, setTitle] = useState('');
+  const [amount, setAmount] = useState('');
+  const [date, setDate] = useState('');
+  const [category, setCategory] = useState('Groceries');
+  const [description, setDescription] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [location, setLocation] = useState('');
+  const [tags, setTags] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentExpenseId, setCurrentExpenseId] = useState(null);
+  
+  // UI state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('All');
+  const [showBalance, setShowBalance] = useState(true);
+
+  // Categories and payment methods
+  const categories = ['Groceries', 'Transportation', 'Entertainment', 'Bills', 'Food', 'Shopping', 'Health', 'Travel', 'Education', 'Others'];
+  const paymentMethods = ['Cash', 'Credit Card', 'Debit Card', 'Bank Transfer', 'Digital Wallet', 'Check'];
+
+  // Load user from local storage
+  useEffect(() => {
+    const savedUser = window.localStorage.getItem('expense_tracker_user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+    setIsAuthReady(true);
+  }, []);
+
+  // Fetch expenses for logged-in user
+  useEffect(() => {
+    const fetchExpenses = async () => {
+      if (!user) return;
+      try {
+        const q = query(collection(db, "expenses"), where("uid", "==", user.uid));
+        const querySnapshot = await getDocs(q);
+        const expensesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setExpenses(expensesData);
+        const newTotal = expensesData.reduce((sum, expense) => sum + parseFloat(expense.amount || 0), 0);
+        setTotal(newTotal);
+      } catch (error) {
+        console.error("Error fetching expenses:", error);
+      }
+    };
+    fetchExpenses();
+  }, [user]);
+
+  // Auth handlers
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userData = {
+        uid: userCredential.user.uid,
+        email: userCredential.user.email
+      };
+      setUser(userData);
+      window.localStorage.setItem('expense_tracker_user', JSON.stringify(userData));
+    } catch (error) {
+      setError(error.message);
+    }
+    setLoading(false);
+  };
+
+  const handleSignup = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userData = {
+        uid: userCredential.user.uid,
+        email: userCredential.user.email
+      };
+      setUser(userData);
+      window.localStorage.setItem('expense_tracker_user', JSON.stringify(userData));
+    } catch (error) {
+      setError(error.message);
+    }
+    setLoading(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setUser(null);
+      setExpenses([]);
+      setTotal(0);
+      window.localStorage.removeItem('expense_tracker_user');
+      window.localStorage.removeItem('expense_tracker_expenses');
+      resetForm();
+      setEmail('');
+      setPassword('');
+    } catch (error) {
+      console.error("Error logging out:", error);
+    }
+  };
+
+  // Expense handlers
+  const resetForm = () => {
+    setTitle('');
+    setAmount('');
+    setDate('');
+    setCategory('Groceries');
+    setDescription('');
+    setPaymentMethod('Cash');
+    setLocation('');
+    setTags('');
+    setIsEditing(false);
+    setCurrentExpenseId(null);
+  };
+
+  const handleAddOrUpdateExpense = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (!title || !amount || !date) {
+      setError('Title, amount, and date are required.');
+      return;
+    }
+
+    const newExpense = {
+      title,
+      amount: parseFloat(amount),
+      date,
+      category,
+      description,
+      paymentMethod,
+      location,
+      tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+      timestamp: new Date(),
+      uid: user.uid
     };
 
-    // 🔥 Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    // DOM elements
-    const expenseForm = document.getElementById("expenseForm");
-    const myExpensesList = document.getElementById("myExpensesList");
-    const allExpensesTotal = document.getElementById("allExpensesTotal");
-    const nameForm = document.getElementById("nameForm");
-    const userNameSpan = document.getElementById("userName");
-    const userIdSpan = document.getElementById("userId");
-
-    let userId = null;
-    let userDocRef = null;
-    let myExpensesCollectionRef = null;
-    const allExpensesCollectionRef = collection(db, "expenses"); // 🌍 General expenses
-
-    // ✅ Load general (public) total expenses
-    function loadAllExpenses() {
-      onSnapshot(allExpensesCollectionRef, (snapshot) => {
-        let total = 0;
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          total += Number(data.amount) || 0;
-        });
-        allExpensesTotal.textContent = `₦${total.toFixed(2)}`;
-      });
-    }
-
-    // ✅ Load personal expenses
-    function loadMyExpenses() {
-      onSnapshot(myExpensesCollectionRef, (snapshot) => {
-        myExpensesList.innerHTML = "";
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          const li = document.createElement("li");
-          li.className = "flex justify-between items-center p-2 border rounded mb-2";
-          li.innerHTML = `
-            <span>${data.date} - ${data.category} (${data.description || "No description"}) : ₦${data.amount}</span>
-            <button class="bg-red-500 text-white px-2 py-1 rounded delete-btn" data-id="${docSnap.id}">Delete</button>
-          `;
-          myExpensesList.appendChild(li);
-        });
-
-        // attach delete event
-        document.querySelectorAll(".delete-btn").forEach((btn) => {
-          btn.addEventListener("click", async () => {
-            const id = btn.getAttribute("data-id");
-            await deleteDoc(doc(db, "users", userId, "expenses", id));
-            await deleteDoc(doc(db, "expenses", id)); // also remove from general
-          });
-        });
-      });
-    }
-
-    // ✅ Auth state
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        userId = user.uid;
-        userIdSpan.textContent = userId.substring(0, 8) + "...";
-
-        userDocRef = doc(db, "users", userId);
-        myExpensesCollectionRef = collection(db, "users", userId, "expenses");
-
-        // Load profile name
-        onSnapshot(userDocRef, (docSnap) => {
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            userNameSpan.textContent = data.displayName || "Anonymous";
-          } else {
-            userNameSpan.textContent = "Anonymous";
-          }
-        });
-
-        loadMyExpenses();
-        loadAllExpenses();
+    setLoading(true);
+    try {
+      if (isEditing) {
+        await updateDoc(doc(db, "expenses", currentExpenseId), newExpense);
+        setExpenses(prev => prev.map(expense => 
+          expense.id === currentExpenseId ? { id: currentExpenseId, ...newExpense } : expense
+        ));
       } else {
-        await signInAnonymously(auth);
+        const docRef = await addDoc(collection(db, "expenses"), newExpense);
+        setExpenses(prev => [...prev, { id: docRef.id, ...newExpense }]);
       }
-    });
+      resetForm();
+      setCurrentView('expenses');
+    } catch (err) {
+      console.error("Error saving expense:", err);
+      setError("Failed to save expense");
+    }
+    setLoading(false);
+  };
 
-    // ✅ Add expense
-    expenseForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const amount = document.getElementById("amount").value;
-      const category = document.getElementById("category").value;
-      const description = document.getElementById("description").value;
-      const date = document.getElementById("date").value;
+  const startEdit = (expense) => {
+    setTitle(expense.title);
+    setAmount(expense.amount.toString());
+    setDate(expense.date);
+    setCategory(expense.category);
+    setDescription(expense.description || '');
+    setPaymentMethod(expense.paymentMethod || 'Cash');
+    setLocation(expense.location || '');
+    setTags(expense.tags ? expense.tags.join(', ') : '');
+    setIsEditing(true);
+    setCurrentExpenseId(expense.id);
+    setCurrentView('addExpense');
+  };
 
-      if (!amount || !category || !date) return alert("All fields required!");
+  const handleDelete = async (id) => {
+    setLoading(true);
+    try {
+      await deleteDoc(doc(db, "expenses", id));
+      setExpenses(prev => prev.filter(expense => expense.id !== id));
+    } catch (err) {
+      console.error("Error deleting expense:", err);
+    }
+    setLoading(false);
+  };
 
-      const expenseData = {
-        amount: Number(amount),
-        category,
-        description,
-        date,
-        userId,
-        userName: userNameSpan.textContent
-      };
+  // Filter expenses
+  const filteredExpenses = expenses.filter(expense => {
+    const matchesSearch = expense.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         expense.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = filterCategory === 'All' || expense.category === filterCategory;
+    return matchesSearch && matchesCategory;
+  });
 
-      // Save in both user’s collection + general collection
-      const newExpenseRef = await addDoc(myExpensesCollectionRef, expenseData);
-      await setDoc(doc(db, "expenses", newExpenseRef.id), expenseData);
+  const sortedExpenses = [...filteredExpenses].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-      expenseForm.reset();
-    });
+  // Calculate analytics
+  const thisMonthExpenses = expenses.filter(expense => {
+    const expenseDate = new Date(expense.date);
+    const now = new Date();
+    return expenseDate.getMonth() === now.getMonth() && expenseDate.getFullYear() === now.getFullYear();
+  });
 
-    // ✅ Update profile name
-    nameForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const displayName = document.getElementById("displayName").value;
-      if (!displayName) return alert("Enter a name");
+  const thisMonthTotal = thisMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const avgDaily = thisMonthTotal / new Date().getDate();
 
-      await setDoc(userDocRef, { displayName }, { merge: true });
-      userNameSpan.textContent = displayName;
-      nameForm.reset();
-    });
-  </script>
-</head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
-  <div class="w-full max-w-3xl bg-white p-6 rounded-xl shadow-lg">
-    <h1 class="text-2xl font-bold mb-4 text-center">💰 Debby Expense Tracker</h1>
+  // Loading state
+  if (!isAuthReady) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-900 text-white">
+        <RefreshCw className="w-8 h-8 animate-spin" />
+        <p className="ml-2">Loading...</p>
+      </div>
+    );
+  }
 
-    <!-- User Profile -->
-    <div class="mb-4 p-3 bg-gray-50 rounded-lg">
-      <p><strong>User:</strong> <span id="userName">Loading...</span></p>
-      <p class="text-sm text-gray-500">ID: <span id="userId"></span></p>
+  // Authentication UI
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 text-slate-100 p-4">
+        <div className="w-full max-w-md">
+          {/* Logo and Header */}
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Wallet className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-3xl font-bold text-white mb-2">ExpenseFlow</h1>
+            <p className="text-slate-400">Smart finance tracking made simple</p>
+          </div>
+
+          {/* Auth Card */}
+          <div className="p-8 bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-2xl border border-slate-700">
+            <h2 className="text-2xl font-bold text-center mb-6 text-white">
+              {showLogin ? 'Welcome Back' : 'Create Account'}
+            </h2>
+            
+            <form onSubmit={showLogin ? handleLogin : handleSignup} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Email</label>
+                <input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full p-3 rounded-lg bg-slate-700/50 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full p-3 rounded-lg bg-slate-700/50 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                />
+              </div>
+
+              {error && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <p className="text-red-400 text-sm">{error}</p>
+                </div>
+              )
+
+              }<button
+                type="submit"
+                className="w-full p-3 font-semibold rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:transform-none"
+                disabled={loading}
+              >
+                {loading ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Processing...
+                  </div>
+                ) : (
+                  showLogin ? 'Sign In' : 'Create Account'
+                )}
+              </button>
+            </form>
+
+            <div className="mt-6 text-center">
+              <p className="text-sm text-slate-400 mb-4">
+                {showLogin ? "Don't have an account?" : "Already have an account?"}
+                <button
+                  onClick={() => {setShowLogin(!showLogin); setError('');}}
+                  className="ml-2 text-indigo-400 font-medium hover:text-indigo-300 transition-colors"
+                >
+                  {showLogin ? 'Sign Up' : 'Sign In'}
+                </button>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-900 text-white flex">
+      <h1 className="m-auto text-2xl">Expense Tracker App with Firebase</h1>
     </div>
+  );
+};
 
-    <!-- Update Name -->
-    <form id="nameForm" class="flex gap-2 mb-4">
-      <input id="displayName" type="text" placeholder="Enter your name" class="flex-1 border p-2 rounded">
-      <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Save</button>
-    </form>
-
-    <!-- Add Expense -->
-    <form id="expenseForm" class="grid gap-2 mb-6">
-      <input id="amount" type="number" placeholder="Amount (₦)" class="border p-2 rounded">
-      <select id="category" class="border p-2 rounded">
-        <option value="">-- Select Category --</option>
-        <option value="Food">🍔 Food</option>
-        <option value="Transport">🚗 Transport</option>
-        <option value="Bills">💡 Bills</option>
-        <option value="Shopping">🛍️ Shopping</option>
-        <option value="Entertainment">🎬 Entertainment</option>
-        <option value="Other">🔖 Other</option>
-      </select>
-      <input id="description" type="text" placeholder="Description (optional)" class="border p-2 rounded">
-      <input id="date" type="date" class="border p-2 rounded">
-      <button type="submit" class="bg-green-500 text-white py-2 rounded">Add Expense</button>
-    </form>
-
-    <!-- My Expenses -->
-    <h2 class="text-lg font-semibold mb-2">📌 My Expenses</h2>
-    <ul id="myExpensesList" class="space-y-2 mb-6"></ul>
-
-    <!-- All Expenses -->
-    <h2 class="text-lg font-semibold mb-2">🌍 All Expenses (Total)</h2>
-    <div class="p-3 bg-gray-50 rounded text-center font-bold text-xl text-blue-600">
-      <span id="allExpensesTotal">₦0.00</span>
-    </div>
-  </div>
-</body>
-</html>
+export default App;
