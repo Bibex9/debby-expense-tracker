@@ -1,29 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Expense Tracker - Firebase Auth + Firestore</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Expense Tracker App</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- React UMD -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-  <!-- Babel -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-  <!-- Firebase COMPAT builds -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0f172a;
+      color: #f1f5f9;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    body.dark-mode { background-color: #0f172a; color: #f1f5f9; }
+    body.light-mode { background-color: #f1f5f9; color: #1a202c; }
+    .error-message { color: #f87171; font-size: 0.875rem; text-align: center; }
+  </style>
 </head>
-<body class="bg-slate-900 text-white min-h-screen">
-  <div id="root" class="flex items-center justify-center min-h-screen">Loading...</div>
+<body class="dark-mode">
 
-  <script type="text/babel">
-    const { useState, useEffect } = React;
+  <!-- Loading State -->
+  <div id="loading-spinner" class="absolute inset-0 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm z-50 hidden">
+    <svg class="w-8 h-8 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+    <p class="ml-2">Loading...</p>
+  </div>
 
-    // Firebase config
+  <!-- Main Application UI -->
+  <div id="app-container" class="h-screen flex flex-col md:flex-row">
+    <!-- Sidebar -->
+    <aside class="w-full md:w-64 p-4 bg-slate-800 md:bg-slate-900 border-b md:border-r border-slate-700 flex flex-row md:flex-col justify-between items-center overflow-x-auto md:overflow-y-auto">
+      <div class="flex-shrink-0 mb-4 md:mb-8 flex items-center gap-2 md:w-full">
+        <span class="text-xl font-bold text-indigo-400 hidden md:block">Pocketwise</span>
+        <span id="user-id" class="font-mono text-xs break-all text-slate-400 hidden md:block"></span>
+      </div>
+
+      <nav class="flex-grow flex flex-row md:flex-col gap-2 md:gap-4 overflow-x-auto md:overflow-x-visible">
+        <button data-view="dashboard" class="nav-btn group flex items-center gap-3 p-3 rounded-xl text-indigo-400">
+          Dashboard
+        </button>
+        <button data-view="expenses" class="nav-btn group flex items-center gap-3 p-3 rounded-xl text-slate-400">Expenses</button>
+        <button data-view="add-expense" class="nav-btn group flex items-center gap-3 p-3 rounded-xl text-slate-400">Add Expense</button>
+      </nav>
+
+      <div class="flex items-center gap-2 mt-auto md:w-full">
+        <button id="dark-mode-toggle" class="p-2 rounded-full hover:bg-slate-700 transition-colors">🌓</button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-grow p-4 md:p-8 overflow-y-auto">
+      <!-- Dashboard -->
+      <div id="dashboard-view" data-view="dashboard" class="view-content active">
+        <h1 class="text-3xl font-bold mb-6 text-slate-200">Dashboard</h1>
+        <div class="p-6 bg-slate-800 rounded-xl shadow-lg">
+          <h2 class="text-xl font-semibold text-slate-200 mb-2">Total Expenses</h2>
+          <p id="dashboard-total" class="text-5xl font-bold text-indigo-400">₦0.00</p>
+        </div>
+      </div>
+
+      <!-- Expenses -->
+      <div id="expenses-view" data-view="expenses" class="view-content hidden">
+        <h1 class="text-3xl font-bold mb-6 text-slate-200">Expense History</h1>
+        <div class="p-6 bg-slate-800 rounded-xl shadow-lg">
+          <table class="min-w-full divide-y divide-slate-700">
+            <thead class="bg-slate-700">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Title</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Amount</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Date</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Category</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="expenses-table-body" class="bg-slate-800 divide-y divide-slate-700"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Add Expense -->
+      <div id="add-expense-view" data-view="add-expense" class="view-content hidden">
+        <h1 id="add-form-title" class="text-3xl font-bold mb-6 text-slate-200">Add New Expense</h1>
+        <div class="p-6 bg-slate-800 rounded-xl shadow-lg">
+          <form id="expense-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input id="title-input" placeholder="Title" class="p-2 rounded bg-slate-700"/>
+            <input id="amount-input" type="number" step="0.01" placeholder="Amount" class="p-2 rounded bg-slate-700"/>
+            <input id="date-input" type="date" class="p-2 rounded bg-slate-700"/>
+            <select id="category-select" class="p-2 rounded bg-slate-700">
+              <option>Groceries</option><option>Shopping</option><option>Bills</option>
+              <option>Transportation</option><option>Entertainment</option><option>Food</option>
+            </select>
+            <button id="submit-btn" class="col-span-2 p-3 rounded bg-indigo-600 text-white">Add Expense</button>
+          </form>
+          <p id="form-error-message" class="error-message hidden"></p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, addDoc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
     const firebaseConfig = {
       apiKey: "AIzaSyBG42OrS2R0lt17SKfwKaTgycMsk_ssqNI",
       authDomain: "debby-expense-tracker-app.firebaseapp.com",
@@ -34,202 +117,88 @@
       measurementId: "G-CJEE12XD97"
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-    function App() {
-      const [user, setUser] = useState(null);
-      const [email, setEmail] = useState("");
-      const [password, setPassword] = useState("");
-      const [error, setError] = useState("");
-      const [loading, setLoading] = useState(false);
-      const [isLogin, setIsLogin] = useState(true);
+    const appContainer = document.getElementById('app-container');
+    const loadingSpinner = document.getElementById('loading-spinner');
+    const userIdDisplay = document.getElementById('user-id');
+    const dashboardTotalDisplay = document.getElementById('dashboard-total');
+    const expensesTableBody = document.getElementById('expenses-table-body');
+    const expenseForm = document.getElementById('expense-form');
+    const titleInput = document.getElementById('title-input');
+    const amountInput = document.getElementById('amount-input');
+    const dateInput = document.getElementById('date-input');
+    const categorySelect = document.getElementById('category-select');
+    const formErrorMsg = document.getElementById('form-error-message');
 
-      useEffect(() => {
-        return auth.onAuthStateChanged((firebaseUser) => {
-          setUser(firebaseUser);
-        });
-      }, []);
+    let currentUser = null;
 
-      const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setError("");
-        try {
-          if (isLogin) {
-            await auth.signInWithEmailAndPassword(email, password);
-          } else {
-            await auth.createUserWithEmailAndPassword(email, password);
-          }
-        } catch (err) {
-          setError(err.message);
-        }
-        setLoading(false);
+    function showLoading(show) {
+      loadingSpinner.classList.toggle('hidden', !show);
+    }
+
+    function renderExpenses(expenses) {
+      expensesTableBody.innerHTML = '';
+      let total = 0;
+      expenses.forEach(exp => {
+        total += exp.amount;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td class="px-6 py-4">${exp.title}</td>
+          <td class="px-6 py-4">₦${exp.amount.toFixed(2)}</td>
+          <td class="px-6 py-4">${exp.date}</td>
+          <td class="px-6 py-4">${exp.category}</td>
+          <td class="px-6 py-4 text-right"><button data-id="${exp.id}" class="delete-btn text-red-400">Delete</button></td>
+        `;
+        expensesTableBody.appendChild(row);
+      });
+      dashboardTotalDisplay.textContent = `₦${total.toFixed(2)}`;
+    }
+
+    expenseForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newExpense = {
+        title: titleInput.value,
+        amount: parseFloat(amountInput.value),
+        date: dateInput.value,
+        category: categorySelect.value,
+        userId: currentUser.uid,
+        timestamp: new Date()
       };
-
-      const handleLogout = async () => {
-        await auth.signOut();
-      };
-
-      if (!user) {
-        return (
-          <div className="flex items-center justify-center min-h-screen">
-            <div className="bg-slate-800 p-8 rounded-xl shadow-lg w-full max-w-md">
-              <h1 className="text-2xl font-bold mb-4 text-center">ExpenseFlow</h1>
-              {error && <p className="text-red-400 mb-2">{error}</p>}
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <input
-                  type="email"
-                  placeholder="Email"
-                  className="w-full p-2 rounded bg-slate-700 border border-slate-600"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                <input
-                  type="password"
-                  placeholder="Password"
-                  className="w-full p-2 rounded bg-slate-700 border border-slate-600"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <button
-                  type="submit"
-                  className="w-full bg-indigo-500 hover:bg-indigo-600 p-2 rounded text-white font-semibold"
-                >
-                  {loading ? "Loading..." : isLogin ? "Login" : "Sign Up"}
-                </button>
-              </form>
-              <p className="mt-4 text-center text-sm">
-                {isLogin ? "Don't have an account?" : "Already have an account?"}
-                <button
-                  onClick={() => setIsLogin(!isLogin)}
-                  className="ml-2 text-indigo-400 hover:underline"
-                >
-                  {isLogin ? "Sign Up" : "Login"}
-                </button>
-              </p>
-            </div>
-          </div>
-        );
+      if (!newExpense.title || isNaN(newExpense.amount) || !newExpense.date) {
+        formErrorMsg.textContent = 'All fields are required.';
+        formErrorMsg.classList.remove('hidden');
+        return;
       }
+      await addDoc(collection(db, `users/${currentUser.uid}/expenses`), newExpense);
+      expenseForm.reset();
+    });
 
-      return <Dashboard user={user} onLogout={handleLogout} />;
-    }
+    expensesTableBody.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button.delete-btn');
+      if (btn) {
+        await deleteDoc(doc(db, `users/${currentUser.uid}/expenses`, btn.dataset.id));
+      }
+    });
 
-    function Dashboard({ user, onLogout }) {
-      const [description, setDescription] = useState("");
-      const [amount, setAmount] = useState("");
-      const [category, setCategory] = useState("General");
-      const [expenses, setExpenses] = useState([]);
-
-      useEffect(() => {
-        const ref = db
-          .collection("users")
-          .doc(user.uid)
-          .collection("expenses")
-          .orderBy("createdAt", "desc");
-
-        const unsub = ref.onSnapshot(snapshot => {
-          setExpenses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        });
-
-        return () => unsub();
-      }, [user.uid]);
-
-      const addExpense = async e => {
-        e.preventDefault();
-        if (!description || !amount) return;
-        await db.collection("users").doc(user.uid).collection("expenses").add({
-          description,
-          amount: parseFloat(amount),
-          category,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        });
-        setDescription("");
-        setAmount("");
-      };
-
-      const deleteExpense = async id => {
-        await db.collection("users").doc(user.uid).collection("expenses").doc(id).delete();
-      };
-
-      return (
-        <div className="min-h-screen p-6">
-          <div className="max-w-3xl mx-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h1 className="text-2xl font-bold">Welcome, {user.email}</h1>
-              <button
-                onClick={onLogout}
-                className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-white font-semibold"
-              >
-                Logout
-              </button>
-            </div>
-
-            {/* Add Expense Form */}
-            <form onSubmit={addExpense} className="bg-slate-800 p-4 rounded-lg mb-6 flex flex-col md:flex-row gap-3">
-              <input
-                type="text"
-                placeholder="Description"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                className="flex-1 p-2 rounded bg-slate-700 border border-slate-600"
-              />
-              <input
-                type="number"
-                placeholder="Amount"
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                className="w-32 p-2 rounded bg-slate-700 border border-slate-600"
-              />
-              <select
-                value={category}
-                onChange={e => setCategory(e.target.value)}
-                className="w-40 p-2 rounded bg-slate-700 border border-slate-600"
-              >
-                <option>General</option>
-                <option>Food</option>
-                <option>Transport</option>
-                <option>Shopping</option>
-              </select>
-              <button className="bg-indigo-500 hover:bg-indigo-600 px-4 py-2 rounded text-white font-semibold">
-                Add
-              </button>
-            </form>
-
-            {/* Expense List */}
-            <div className="bg-slate-800 p-4 rounded-lg">
-              <h2 className="text-xl font-semibold mb-4">Your Expenses</h2>
-              {expenses.length === 0 ? (
-                <p className="text-slate-400">No expenses yet.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {expenses.map(exp => (
-                    <li key={exp.id} className="flex justify-between items-center bg-slate-700 p-3 rounded">
-                      <div>
-                        <p className="font-semibold">{exp.description}</p>
-                        <p className="text-slate-400 text-sm">
-                          {exp.category} • ₦{exp.amount}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => deleteExpense(exp.id)}
-                        className="bg-red-500 hover:bg-red-600 px-3 py-1 rounded text-white text-sm"
-                      >
-                        Delete
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    window.onload = () => {
+      showLoading(true);
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          currentUser = user;
+          userIdDisplay.textContent = user.uid;
+          const expensesRef = collection(db, `users/${user.uid}/expenses`);
+          onSnapshot(expensesRef, (snapshot) => {
+            renderExpenses(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+          });
+        } else {
+          await signInAnonymously(auth);
+        }
+        showLoading(false);
+      });
+    };
   </script>
 </body>
 </html>
