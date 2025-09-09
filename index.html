@@ -9,7 +9,599 @@
   <style>
     body {
       font-family: 'Inter', sans-serif;
-      background-color: #0f172a;
+      background-color: #0f172a<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f1f5f9;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        body.dark-mode {
+            background-color: #0f172a;
+            color: #f1f5f9;
+        }
+        body.light-mode {
+            background-color: #f1f5f9;
+            color: #1a202c;
+        }
+        .text-input, .select-input {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            background-color: #334155;
+            border: 1px solid #475569;
+            color: #fff;
+            outline: none;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .text-input:focus, .select-input:focus {
+            ring: 2px;
+            ring-color: #6366f1;
+        }
+        body.light-mode .text-input, body.light-mode .select-input {
+            background-color: #e2e8f0;
+            border: 1px solid #cbd5e1;
+            color: #1a202c;
+        }
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+        input[type="date"] {
+            color-scheme: dark;
+        }
+        body.light-mode input[type="date"] {
+            color-scheme: light;
+        }
+        .error-message {
+            color: #f87171;
+            font-size: 0.875rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="dark-mode">
+
+    <!-- Loading State -->
+    <div id="loading-spinner" class="absolute inset-0 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm z-50 hidden">
+        <svg class="w-8 h-8 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="ml-2">Loading...</p>
+    </div>
+
+    <!-- Auth UI -->
+    <div id="auth-container" class="flex items-center justify-center min-h-screen p-4">
+        <div class="w-full max-w-md p-8 bg-slate-800 rounded-xl shadow-2xl">
+            <h2 id="auth-title" class="text-3xl font-bold text-center mb-6 text-indigo-400">Login to your account</h2>
+            <form id="auth-form" class="space-y-4">
+                <input type="email" id="email-input" placeholder="Email" class="text-input"/>
+                <input type="password" id="password-input" placeholder="Password" class="text-input"/>
+                <p id="auth-error-message" class="error-message hidden"></p>
+                <button type="submit" id="auth-submit-btn" class="w-full p-3 font-semibold rounded-md bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:bg-indigo-400">Log In</button>
+            </form>
+            <div class="mt-6 text-center">
+                <p class="text-sm text-slate-400">
+                    <span id="auth-toggle-text">Don't have an account?</span>
+                    <button id="auth-toggle-btn" class="ml-2 text-indigo-400 font-medium hover:underline">Sign Up</button>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application UI -->
+    <div id="app-container" class="hidden h-screen flex flex-col md:flex-row">
+        <!-- Sidebar Navigation -->
+        <aside class="w-full md:w-64 p-4 bg-slate-800 md:bg-slate-900 border-b md:border-r border-slate-700 flex flex-row md:flex-col justify-between items-center overflow-x-auto md:overflow-y-auto">
+            <div class="flex-shrink-0 mb-4 md:mb-8 flex items-center gap-2 md:w-full">
+                <span class="text-xl font-bold text-indigo-400 hidden md:block">Pocketwise</span>
+                <span id="user-id" class="font-mono text-xs break-all text-slate-400 hidden md:block"></span>
+            </div>
+
+            <nav class="flex-grow flex flex-row md:flex-col gap-2 md:gap-4 overflow-x-auto md:overflow-x-visible">
+                <button data-view="dashboard" class="nav-btn group flex items-center justify-center md:justify-start gap-3 p-3 rounded-full md:rounded-xl text-slate-400 hover:bg-slate-700 hover:text-indigo-400 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-home w-6 h-6"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    <span class="text-sm font-medium hidden md:block">Dashboard</span>
+                </button>
+                <button data-view="expenses" class="nav-btn group flex items-center justify-center md:justify-start gap-3 p-3 rounded-full md:rounded-xl text-slate-400 hover:bg-slate-700 hover:text-indigo-400 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-receipt w-6 h-6"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2h-16Z"/><path d="M8 7h8"/><path d="M8 12h8"/><path d="M8 17h8"/></svg>
+                    <span class="text-sm font-medium hidden md:block">Expenses</span>
+                </button>
+                <button data-view="add-expense" class="nav-btn group flex items-center justify-center md:justify-start gap-3 p-3 rounded-full md:rounded-xl text-slate-400 hover:bg-slate-700 hover:text-indigo-400 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-6 h-6"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+                    <span class="text-sm font-medium hidden md:block">Add Expense</span>
+                </button>
+                <button data-view="analytics" class="nav-btn group flex items-center justify-center md:justify-start gap-3 p-3 rounded-full md:rounded-xl text-slate-400 hover:bg-slate-700 hover:text-indigo-400 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pie-chart w-6 h-6"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+                    <span class="text-sm font-medium hidden md:block">Analytics</span>
+                </button>
+                <button data-view="budgets" class="nav-btn group flex items-center justify-center md:justify-start gap-3 p-3 rounded-full md:rounded-xl text-slate-400 hover:bg-slate-700 hover:text-indigo-400 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-target w-6 h-6"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                    <span class="text-sm font-medium hidden md:block">Budgets</span>
+                </button>
+                <button data-view="reports" class="nav-btn group flex items-center justify-center md:justify-start gap-3 p-3 rounded-full md:rounded-xl text-slate-400 hover:bg-slate-700 hover:text-indigo-400 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trending-up w-6 h-6"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                    <span class="text-sm font-medium hidden md:block">Reports</span>
+                </button>
+                <button data-view="settings" class="nav-btn group flex items-center justify-center md:justify-start gap-3 p-3 rounded-full md:rounded-xl text-slate-400 hover:bg-slate-700 hover:text-indigo-400 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings w-6 h-6"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.39a2 2 0 0 0 .73 2.73l.15.08a2 2 0 0 1 1 1.73v.5a2 2 0 0 1-1 1.73l-.15.08a2 2 0 0 0-.73 2.73l.22.39a2 2 0 0 0 2.73.73l.43-.25a2 2 0 0 1 1-1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.73v-.5a2 2 0 0 1 1-1.73l.15-.08a2 2 0 0 0 .73-2.73l-.22-.39a2 2 0 0 0-2.73-.73l-.43.25a2 2 0 0 1-1 1.73V2a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <span class="text-sm font-medium hidden md:block">Settings</span>
+                </button>
+            </nav>
+            <div class="flex items-center gap-2 mt-auto md:w-full">
+                <button id="dark-mode-toggle" class="p-2 rounded-full md:rounded-xl hover:bg-slate-700 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun w-6 h-6 text-yellow-400 block"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.93 19.07l1.41-1.41"/><path d="M17.66 6.34l1.41-1.41"/></svg>
+                </button>
+                <button id="logout-btn" class="flex items-center gap-2 p-2 rounded-full md:rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors hidden md:flex">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out w-4 h-4"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                    <span class="font-semibold text-sm">Log Out</span>
+                </button>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="flex-grow p-4 md:p-8 overflow-y-auto">
+            <!-- Dashboard View -->
+            <div id="dashboard-view" data-view="dashboard" class="view-content active">
+                <h1 class="text-3xl font-bold mb-6 text-slate-200">Dashboard</h1>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="p-6 bg-slate-800 rounded-xl shadow-lg">
+                        <h2 class="text-xl font-semibold text-slate-200 mb-2">Total Expenses</h2>
+                        <p id="dashboard-total" class="text-5xl font-bold text-indigo-400">₦0.00</p>
+                    </div>
+                    <div class="p-6 bg-slate-800 rounded-xl shadow-lg flex items-center justify-center">
+                        <div class="text-center py-12 text-slate-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bar-chart-3 w-16 h-16 mx-auto mb-4 opacity-50"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                            <h3 class="text-lg font-medium mb-2">Monthly Spending</h3>
+                            <p>Analytics charts will be available here.</p>
+                        </div>
+                    </div>
+                    <div class="p-6 bg-slate-800 rounded-xl shadow-lg flex items-center justify-center">
+                        <div class="text-center py-12 text-slate-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pie-chart w-16 h-16 mx-auto mb-4 opacity-50"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+                            <h3 class="text-lg font-medium mb-2">Category Breakdown</h3>
+                            <p>Visualizing your expenses by category.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expenses View -->
+            <div id="expenses-view" data-view="expenses" class="view-content hidden">
+                <h1 class="text-3xl font-bold mb-6 text-slate-200">Expense History</h1>
+                <div class="p-6 bg-slate-800 rounded-xl shadow-lg">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-700">
+                            <thead class="bg-slate-700">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Title</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Amount</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Date</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Category</th>
+                                    <th scope="col" class="relative px-6 py-3"><span class="sr-only">Actions</span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="expenses-table-body" class="bg-slate-800 divide-y divide-slate-700">
+                                <!-- Expenses will be rendered here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Expense View -->
+            <div id="add-expense-view" data-view="add-expense" class="view-content hidden">
+                <h1 id="add-form-title" class="text-3xl font-bold mb-6 text-slate-200">Add New Expense</h1>
+                <div class="p-6 bg-slate-800 rounded-xl shadow-lg">
+                    <form id="expense-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="col-span-1 md:col-span-2">
+                            <label for="title-input" class="block text-slate-400 mb-1 text-sm">Title</label>
+                            <div class="flex items-center bg-slate-700 rounded-md p-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-align-left w-5 h-5 text-slate-500 mr-2"><line x1="21" x2="3" y1="6" y2="6"/><line x1="15" x2="3" y1="12" y2="12"/><line x1="17" x2="3" y1="18" y2="18"/></svg>
+                                <input type="text" id="title-input" placeholder="e.g. Weekly groceries" class="w-full bg-transparent text-white focus:outline-none"/>
+                            </div>
+                        </div>
+        
+                        <div>
+                            <label for="amount-input" class="block text-slate-400 mb-1 text-sm">Amount</label>
+                            <div class="flex items-center bg-slate-700 rounded-md p-2">
+                                <span class="text-slate-500 font-bold mr-2">₦</span>
+                                <input type="number" step="0.01" id="amount-input" placeholder="0.00" class="w-full bg-transparent text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"/>
+                            </div>
+                        </div>
+        
+                        <div>
+                            <label for="date-input" class="block text-slate-400 mb-1 text-sm">Date</label>
+                            <div class="flex items-center bg-slate-700 rounded-md p-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar w-5 h-5 text-slate-500 mr-2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                                <input type="date" id="date-input" class="w-full bg-transparent text-white focus:outline-none"/>
+                            </div>
+                        </div>
+        
+                        <div>
+                            <label for="category-select" class="block text-slate-400 mb-1 text-sm">Category</label>
+                            <div class="flex items-center bg-slate-700 rounded-md p-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list w-5 h-5 text-slate-500 mr-2"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
+                                <select id="category-select" class="w-full bg-transparent text-white focus:outline-none">
+                                    <option class="bg-slate-700 text-white" value="Groceries">Groceries</option>
+                                    <option class="bg-slate-700 text-white" value="Shopping">Shopping</option>
+                                    <option class="bg-slate-700 text-white" value="Bills">Bills</option>
+                                    <option class="bg-slate-700 text-white" value="Transportation">Transportation</option>
+                                    <option class="bg-slate-700 text-white" value="Entertainment">Entertainment</option>
+                                    <option class="bg-slate-700 text-white" value="Food">Food</option>
+                                    <option class="bg-slate-700 text-white" value="Others">Others</option>
+                                </select>
+                            </div>
+                        </div>
+        
+                        <div class="col-span-1 md:col-span-2">
+                            <button type="submit" id="submit-btn" class="w-full p-3 rounded-md font-semibold text-white transition-colors bg-indigo-600 hover:bg-indigo-700">Add Expense</button>
+                        </div>
+                        <p id="form-error-message" class="col-span-1 md:col-span-2 error-message hidden"></p>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Analytics View -->
+            <div id="analytics-view" data-view="analytics" class="view-content hidden text-center py-12 text-slate-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bar-chart-3 w-16 h-16 mx-auto mb-4 opacity-50"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                <h3 class="text-lg font-medium mb-2">Analytics Coming Soon</h3>
+                <p>Advanced charts and insights will be available here.</p>
+            </div>
+
+            <!-- Budgets View -->
+            <div id="budgets-view" data-view="budgets" class="view-content hidden text-center py-12 text-slate-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-target w-16 h-16 mx-auto mb-4 opacity-50"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                <h3 class="text-lg font-medium mb-2">Budget Management Coming Soon</h3>
+                <p>Set spending limits and track your progress.</p>
+            </div>
+
+            <!-- Reports View -->
+            <div id="reports-view" data-view="reports" class="view-content hidden text-center py-12 text-slate-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trending-up w-16 h-16 mx-auto mb-4 opacity-50"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                <h3 class="text-lg font-medium mb-2">Reports Coming Soon</h3>
+                <p>Download detailed reports of your financial activity.</p>
+            </div>
+
+            <!-- Settings View -->
+            <div id="settings-view" data-view="settings" class="view-content hidden text-center py-12 text-slate-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings w-16 h-16 mx-auto mb-4 opacity-50"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.39a2 2 0 0 0 .73 2.73l.15.08a2 2 0 0 1 1 1.73v.5a2 2 0 0 1-1 1.73l-.15.08a2 2 0 0 0-.73 2.73l.22.39a2 2 0 0 0 2.73.73l.43-.25a2 2 0 0 1 1-1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.73v-.5a2 2 0 0 1 1-1.73l.15-.08a2 2 0 0 0 .73-2.73l-.22-.39a2 2 0 0 0-2.73-.73l-.43.25a2 2 0 0 1-1 1.73V2a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                <h3 class="text-lg font-medium mb-2">Settings</h3>
+                <p>Personalize your experience and manage app settings here.</p>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        import { initializeApp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables for Firebase and App
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        setLogLevel('Debug');
+
+        // DOM Elements
+        const authContainer = document.getElementById('auth-container');
+        const appContainer = document.getElementById('app-container');
+        const loadingSpinner = document.getElementById('loading-spinner');
+
+        const authForm = document.getElementById('auth-form');
+        const authTitle = document.getElementById('auth-title');
+        const authToggleText = document.getElementById('auth-toggle-text');
+        const authToggleBtn = document.getElementById('auth-toggle-btn');
+        const authSubmitBtn = document.getElementById('auth-submit-btn');
+        const emailInput = document.getElementById('email-input');
+        const passwordInput = document.getElementById('password-input');
+        const authErrorMsg = document.getElementById('auth-error-message');
+
+        const userIdDisplay = document.getElementById('user-id');
+        const logoutBtn = document.getElementById('logout-btn');
+        const navBtns = document.querySelectorAll('.nav-btn');
+        const dashboardTotalDisplay = document.getElementById('dashboard-total');
+        const expensesTableBody = document.getElementById('expenses-table-body');
+        
+        // Form elements for Add/Edit Expense
+        const formTitle = document.getElementById('add-form-title');
+        const expenseForm = document.getElementById('expense-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const titleInput = document.getElementById('title-input');
+        const amountInput = document.getElementById('amount-input');
+        const dateInput = document.getElementById('date-input');
+        const categorySelect = document.getElementById('category-select');
+        const formErrorMsg = document.getElementById('form-error-message');
+        
+        // Dark Mode Toggle
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+
+        // State variables
+        let isLoginView = true;
+        let currentUser = null;
+        let isEditing = false;
+        let currentExpenseId = null;
+
+        // --- Functions ---
+
+        function showLoading(show) {
+            loadingSpinner.classList.toggle('hidden', !show);
+        }
+
+        function toggleAppUI(authenticated) {
+            authContainer.classList.toggle('hidden', authenticated);
+            appContainer.classList.toggle('hidden', !authenticated);
+        }
+        
+        function switchView(view) {
+            document.querySelectorAll('.view-content').forEach(el => {
+                el.classList.add('hidden');
+                el.classList.remove('active');
+            });
+            const selectedView = document.getElementById(`${view}-view`);
+            if (selectedView) {
+                selectedView.classList.remove('hidden');
+                selectedView.classList.add('active');
+            }
+        
+            navBtns.forEach(btn => {
+                btn.classList.remove('text-indigo-400');
+                btn.classList.add('text-slate-400');
+            });
+            const activeBtn = document.querySelector(`.nav-btn[data-view="${view}"]`);
+            if (activeBtn) {
+                activeBtn.classList.add('text-indigo-400');
+                activeBtn.classList.remove('text-slate-400');
+            }
+        }
+        
+        function displayAuthError(message) {
+            authErrorMsg.textContent = message;
+            authErrorMsg.classList.remove('hidden');
+        }
+
+        function displayFormError(message) {
+            formErrorMsg.textContent = message;
+            formErrorMsg.classList.remove('hidden');
+        }
+
+        function resetForm() {
+            titleInput.value = '';
+            amountInput.value = '';
+            dateInput.value = '';
+            categorySelect.value = 'Groceries';
+            isEditing = false;
+            currentExpenseId = null;
+            formTitle.textContent = 'Add New Expense';
+            submitBtn.textContent = 'Add Expense';
+            submitBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            submitBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+            formErrorMsg.classList.add('hidden');
+        }
+
+        function renderExpenses(expenses) {
+            expensesTableBody.innerHTML = '';
+            let total = 0;
+            if (expenses.length > 0) {
+                expenses.forEach(expense => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-slate-700 transition-colors';
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-200">${expense.title}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-300">₦${expense.amount.toFixed(2)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-300">${expense.date}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-300">${expense.category}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div class="flex justify-end space-x-2">
+                                <button class="edit-btn text-indigo-400 hover:text-indigo-300 transition-colors" data-id="${expense.id}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-edit w-5 h-5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                </button>
+                                <button class="delete-btn text-red-400 hover:text-red-300 transition-colors" data-id="${expense.id}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2 w-5 h-5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    expensesTableBody.appendChild(row);
+                    total += expense.amount;
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="5" class="px-6 py-4 whitespace-nowrap text-center text-sm text-slate-400">No expenses logged yet.</td>`;
+                expensesTableBody.appendChild(row);
+            }
+            dashboardTotalDisplay.textContent = `₦${total.toFixed(2)}`;
+        }
+
+        // --- Event Listeners ---
+
+        authToggleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            isLoginView = !isLoginView;
+            authTitle.textContent = isLoginView ? 'Login to your account' : 'Create an account';
+            authToggleText.textContent = isLoginView ? "Don't have an account?" : "Already have an account?";
+            authToggleBtn.textContent = isLoginView ? 'Sign Up' : 'Log In';
+            authSubmitBtn.textContent = isLoginView ? 'Log In' : 'Sign Up';
+            authErrorMsg.classList.add('hidden');
+        });
+
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading(true);
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            authErrorMsg.classList.add('hidden');
+
+            try {
+                if (isLoginView) {
+                    await signInWithEmailAndPassword(auth, email, password);
+                } else {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                }
+            } catch (e) {
+                console.error(e);
+                displayAuthError(e.message || 'Authentication failed. Please try again.');
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        logoutBtn.addEventListener('click', async () => {
+            showLoading(true);
+            try {
+                await signOut(auth);
+                resetForm();
+            } catch (e) {
+                console.error('Failed to log out:', e);
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        expenseForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading(true);
+            formErrorMsg.classList.add('hidden');
+
+            const newExpense = {
+                title: titleInput.value,
+                amount: parseFloat(amountInput.value),
+                date: dateInput.value,
+                category: categorySelect.value,
+                userId: currentUser.uid,
+                timestamp: new Date()
+            };
+
+            if (!newExpense.title || isNaN(newExpense.amount) || !newExpense.date) {
+                displayFormError('All fields are required and amount must be a number.');
+                showLoading(false);
+                return;
+            }
+
+            try {
+                if (isEditing) {
+                    await setDoc(doc(db, `artifacts/${appId}/users/${currentUser.uid}/expenses`, currentExpenseId), newExpense);
+                } else {
+                    await addDoc(collection(db, `artifacts/${appId}/users/${currentUser.uid}/expenses`), newExpense);
+                }
+                resetForm();
+            } catch (e) {
+                console.error('Failed to save expense:', e);
+                displayFormError('Failed to save expense. Please try again.');
+            } finally {
+                showLoading(false);
+            }
+        });
+        
+        expensesTableBody.addEventListener('click', async (e) => {
+            const target = e.target.closest('button');
+            if (!target) return;
+            const id = target.dataset.id;
+            
+            if (target.classList.contains('delete-btn')) {
+                showLoading(true);
+                try {
+                    await deleteDoc(doc(db, `artifacts/${appId}/users/${currentUser.uid}/expenses`, id));
+                } catch (e) {
+                    console.error('Failed to delete expense:', e);
+                    displayFormError('Failed to delete expense. Please try again.');
+                } finally {
+                    showLoading(false);
+                }
+            } else if (target.classList.contains('edit-btn')) {
+                const expense = {
+                    title: target.closest('tr').children[0].textContent,
+                    amount: parseFloat(target.closest('tr').children[1].textContent.replace('₦', '')),
+                    date: target.closest('tr').children[2].textContent,
+                    category: target.closest('tr').children[3].textContent,
+                };
+                
+                titleInput.value = expense.title;
+                amountInput.value = expense.amount;
+                dateInput.value = expense.date;
+                categorySelect.value = expense.category;
+                
+                isEditing = true;
+                currentExpenseId = id;
+                formTitle.textContent = 'Edit Expense';
+                submitBtn.textContent = 'Update Expense';
+                submitBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                submitBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                formErrorMsg.classList.add('hidden');
+                
+                // Switch to the add expense view
+                switchView('add-expense');
+            }
+        });
+        
+        navBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const view = btn.dataset.view;
+                switchView(view);
+            });
+        });
+        
+        darkModeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            document.body.classList.toggle('light-mode');
+        });
+
+        // --- Initial App Load and Auth State Listener ---
+        window.onload = () => {
+            showLoading(true);
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUser = user;
+                    toggleAppUI(true);
+                    userIdDisplay.textContent = user.uid;
+                    switchView('dashboard');
+
+                    const expensesCollectionRef = collection(db, `artifacts/${appId}/users/${user.uid}/expenses`);
+                    onSnapshot(expensesCollectionRef, (snapshot) => {
+                        const expensesData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                        const sortedExpenses = expensesData.sort((a, b) => new Date(b.date) - new Date(a.date));
+                        renderExpenses(sortedExpenses);
+                    }, (err) => {
+                        console.error("Failed to fetch expenses:", err);
+                        displayFormError("Failed to load expenses. Please try again.");
+                    });
+                } else {
+                    const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                    try {
+                        if (initialToken) {
+                            await signInWithCustomToken(auth, initialToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (e) {
+                        console.error('Initial authentication failed:', e);
+                        currentUser = null;
+                        toggleAppUI(false);
+                    }
+                }
+                showLoading(false);
+            });
+        };
+    </script>
+</body>
+</html>
+;
       color: #f1f5f9;
       transition: background-color 0.3s, color 0.3s;
     }
