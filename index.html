@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Expense Tracker - Anonymous</title>
+  <title>Expense Tracker - Firebase Auth + Firestore</title>
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- React + ReactDOM -->
+  <!-- React UMD -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <!-- Babel -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <!-- Firebase COMPAT -->
+  <!-- Firebase COMPAT builds -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -40,24 +40,84 @@
 
     function App() {
       const [user, setUser] = useState(null);
-      const [loading, setLoading] = useState(true);
+      const [email, setEmail] = useState("");
+      const [password, setPassword] = useState("");
+      const [error, setError] = useState("");
+      const [loading, setLoading] = useState(false);
+      const [isLogin, setIsLogin] = useState(true);
 
       useEffect(() => {
-        auth.signInAnonymously().catch(err => console.error("Auth error:", err));
-        return auth.onAuthStateChanged(u => {
-          setUser(u);
-          setLoading(false);
+        return auth.onAuthStateChanged((firebaseUser) => {
+          setUser(firebaseUser);
         });
       }, []);
 
-      if (loading || !user) {
-        return <div className="flex items-center justify-center min-h-screen">Connecting...</div>;
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError("");
+        try {
+          if (isLogin) {
+            await auth.signInWithEmailAndPassword(email, password);
+          } else {
+            await auth.createUserWithEmailAndPassword(email, password);
+          }
+        } catch (err) {
+          setError(err.message);
+        }
+        setLoading(false);
+      };
+
+      const handleLogout = async () => {
+        await auth.signOut();
+      };
+
+      if (!user) {
+        return (
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="bg-slate-800 p-8 rounded-xl shadow-lg w-full max-w-md">
+              <h1 className="text-2xl font-bold mb-4 text-center">ExpenseFlow</h1>
+              {error && <p className="text-red-400 mb-2">{error}</p>}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <input
+                  type="email"
+                  placeholder="Email"
+                  className="w-full p-2 rounded bg-slate-700 border border-slate-600"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  className="w-full p-2 rounded bg-slate-700 border border-slate-600"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="submit"
+                  className="w-full bg-indigo-500 hover:bg-indigo-600 p-2 rounded text-white font-semibold"
+                >
+                  {loading ? "Loading..." : isLogin ? "Login" : "Sign Up"}
+                </button>
+              </form>
+              <p className="mt-4 text-center text-sm">
+                {isLogin ? "Don't have an account?" : "Already have an account?"}
+                <button
+                  onClick={() => setIsLogin(!isLogin)}
+                  className="ml-2 text-indigo-400 hover:underline"
+                >
+                  {isLogin ? "Sign Up" : "Login"}
+                </button>
+              </p>
+            </div>
+          </div>
+        );
       }
 
-      return <Dashboard user={user} />;
+      return <Dashboard user={user} onLogout={handleLogout} />;
     }
 
-    function Dashboard({ user }) {
+    function Dashboard({ user, onLogout }) {
       const [description, setDescription] = useState("");
       const [amount, setAmount] = useState("");
       const [category, setCategory] = useState("General");
@@ -97,7 +157,15 @@
       return (
         <div className="min-h-screen p-6">
           <div className="max-w-3xl mx-auto">
-            <h1 className="text-2xl font-bold mb-6">ExpenseFlow (Anonymous)</h1>
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold">Welcome, {user.email}</h1>
+              <button
+                onClick={onLogout}
+                className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-white font-semibold"
+              >
+                Logout
+              </button>
+            </div>
 
             {/* Add Expense Form */}
             <form onSubmit={addExpense} className="bg-slate-800 p-4 rounded-lg mb-6 flex flex-col md:flex-row gap-3">
