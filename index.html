@@ -1,367 +1,138 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Plus,
-  Trash2,
-  Edit,
-  User,
-  LogOut,
-  Calendar,
-  DollarSign,
-  AlignLeft,
-  List,
-  RefreshCw,
-  Home,
-  PieChart,
-  TrendingUp,
-  Target,
-  Settings,
-  Bell,
-  Search,
-  Filter,
-  Download,
-  Upload,
-  CreditCard,
-  Wallet,
-  Receipt,
-  BarChart3,
-  LineChart,
-  ArrowUpRight,
-  ArrowDownRight,
-  Eye,
-  EyeOff,
-  Sun,
-  Moon,
-  ChevronDown,
-  MapPin,
-  Tag,
-  Camera
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expense Tracker with Firebase</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React and ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <!-- Babel -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center">
+  <div id="root"></div>
 
-// Firebase imports
-import { auth, db } from "./firebase";
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut 
-} from "firebase/auth";
-import { 
-  collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, where 
-} from "firebase/firestore";
+  <script type="text/babel">
 
-const App = () => {
-  // Core state
-  const [user, setUser] = useState(null);
-  const [isAuthReady, setIsAuthReady] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [darkMode, setDarkMode] = useState(true);
-  const [currentView, setCurrentView] = useState('dashboard');
-  
-  // Auth state
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [showLogin, setShowLogin] = useState(true);
-  
-  // Expense state
-  const [expenses, setExpenses] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [title, setTitle] = useState('');
-  const [amount, setAmount] = useState('');
-  const [date, setDate] = useState('');
-  const [category, setCategory] = useState('Groceries');
-  const [description, setDescription] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('Cash');
-  const [location, setLocation] = useState('');
-  const [tags, setTags] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
-  const [currentExpenseId, setCurrentExpenseId] = useState(null);
-  
-  // UI state
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState('All');
-  const [showBalance, setShowBalance] = useState(true);
+    const { useState, useEffect } = React;
 
-  // Categories and payment methods
-  const categories = ['Groceries', 'Transportation', 'Entertainment', 'Bills', 'Food', 'Shopping', 'Health', 'Travel', 'Education', 'Others'];
-  const paymentMethods = ['Cash', 'Credit Card', 'Debit Card', 'Bank Transfer', 'Digital Wallet', 'Check'];
-
-  // Load user from local storage
-  useEffect(() => {
-    const savedUser = window.localStorage.getItem('expense_tracker_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    setIsAuthReady(true);
-  }, []);
-
-  // Fetch expenses for logged-in user
-  useEffect(() => {
-    const fetchExpenses = async () => {
-      if (!user) return;
-      try {
-        const q = query(collection(db, "expenses"), where("uid", "==", user.uid));
-        const querySnapshot = await getDocs(q);
-        const expensesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setExpenses(expensesData);
-        const newTotal = expensesData.reduce((sum, expense) => sum + parseFloat(expense.amount || 0), 0);
-        setTotal(newTotal);
-      } catch (error) {
-        console.error("Error fetching expenses:", error);
-      }
-    };
-    fetchExpenses();
-  }, [user]);
-
-  // Auth handlers
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const userData = {
-        uid: userCredential.user.uid,
-        email: userCredential.user.email
-      };
-      setUser(userData);
-      window.localStorage.setItem('expense_tracker_user', JSON.stringify(userData));
-    } catch (error) {
-      setError(error.message);
-    }
-    setLoading(false);
-  };
-
-  const handleSignup = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const userData = {
-        uid: userCredential.user.uid,
-        email: userCredential.user.email
-      };
-      setUser(userData);
-      window.localStorage.setItem('expense_tracker_user', JSON.stringify(userData));
-    } catch (error) {
-      setError(error.message);
-    }
-    setLoading(false);
-  };
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      setUser(null);
-      setExpenses([]);
-      setTotal(0);
-      window.localStorage.removeItem('expense_tracker_user');
-      window.localStorage.removeItem('expense_tracker_expenses');
-      resetForm();
-      setEmail('');
-      setPassword('');
-    } catch (error) {
-      console.error("Error logging out:", error);
-    }
-  };
-
-  // Expense handlers
-  const resetForm = () => {
-    setTitle('');
-    setAmount('');
-    setDate('');
-    setCategory('Groceries');
-    setDescription('');
-    setPaymentMethod('Cash');
-    setLocation('');
-    setTags('');
-    setIsEditing(false);
-    setCurrentExpenseId(null);
-  };
-
-  const handleAddOrUpdateExpense = async (e) => {
-    e.preventDefault();
-    setError('');
-    if (!title || !amount || !date) {
-      setError('Title, amount, and date are required.');
-      return;
-    }
-
-    const newExpense = {
-      title,
-      amount: parseFloat(amount),
-      date,
-      category,
-      description,
-      paymentMethod,
-      location,
-      tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag),
-      timestamp: new Date(),
-      uid: user.uid
+    // Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBG42OrS2R0lt17SKfwKaTgycMsk_ssqNI",
+      authDomain: "debby-expense-tracker-app.firebaseapp.com",
+      projectId: "debby-expense-tracker-app",
+      storageBucket: "debby-expense-tracker-app.firebasestorage.app",
+      messagingSenderId: "527529857701",
+      appId: "1:527529857701:web:f01646b2afb442438d334c",
+      measurementId: "G-CJEE12XD97"
     };
 
-    setLoading(true);
-    try {
-      if (isEditing) {
-        await updateDoc(doc(db, "expenses", currentExpenseId), newExpense);
-        setExpenses(prev => prev.map(expense => 
-          expense.id === currentExpenseId ? { id: currentExpenseId, ...newExpense } : expense
-        ));
-      } else {
-        const docRef = await addDoc(collection(db, "expenses"), newExpense);
-        setExpenses(prev => [...prev, { id: docRef.id, ...newExpense }]);
-      }
-      resetForm();
-      setCurrentView('expenses');
-    } catch (err) {
-      console.error("Error saving expense:", err);
-      setError("Failed to save expense");
-    }
-    setLoading(false);
-  };
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.getAuth ? firebase.getAuth(app) : firebase.auth();
+    const db = firebase.getFirestore ? firebase.getFirestore(app) : firebase.firestore();
 
-  const startEdit = (expense) => {
-    setTitle(expense.title);
-    setAmount(expense.amount.toString());
-    setDate(expense.date);
-    setCategory(expense.category);
-    setDescription(expense.description || '');
-    setPaymentMethod(expense.paymentMethod || 'Cash');
-    setLocation(expense.location || '');
-    setTags(expense.tags ? expense.tags.join(', ') : '');
-    setIsEditing(true);
-    setCurrentExpenseId(expense.id);
-    setCurrentView('addExpense');
-  };
+    function App() {
+      const [user, setUser] = useState(null);
+      const [email, setEmail] = useState("");
+      const [password, setPassword] = useState("");
+      const [error, setError] = useState("");
+      const [loading, setLoading] = useState(false);
 
-  const handleDelete = async (id) => {
-    setLoading(true);
-    try {
-      await deleteDoc(doc(db, "expenses", id));
-      setExpenses(prev => prev.filter(expense => expense.id !== id));
-    } catch (err) {
-      console.error("Error deleting expense:", err);
-    }
-    setLoading(false);
-  };
+      // Login
+      const handleLogin = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+          const { signInWithEmailAndPassword } = firebase;
+          const userCredential = await signInWithEmailAndPassword(auth, email, password);
+          setUser(userCredential.user);
+        } catch (err) {
+          setError(err.message);
+        }
+        setLoading(false);
+      };
 
-  // Filter expenses
-  const filteredExpenses = expenses.filter(expense => {
-    const matchesSearch = expense.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         expense.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filterCategory === 'All' || expense.category === filterCategory;
-    return matchesSearch && matchesCategory;
-  });
+      // Signup
+      const handleSignup = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+          const { createUserWithEmailAndPassword } = firebase;
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          setUser(userCredential.user);
+        } catch (err) {
+          setError(err.message);
+        }
+        setLoading(false);
+      };
 
-  const sortedExpenses = [...filteredExpenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+      // Logout
+      const handleLogout = async () => {
+        const { signOut } = firebase;
+        await signOut(auth);
+        setUser(null);
+      };
 
-  // Calculate analytics
-  const thisMonthExpenses = expenses.filter(expense => {
-    const expenseDate = new Date(expense.date);
-    const now = new Date();
-    return expenseDate.getMonth() === now.getMonth() && expenseDate.getFullYear() === now.getFullYear();
-  });
-
-  const thisMonthTotal = thisMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const avgDaily = thisMonthTotal / new Date().getDate();
-
-  // Loading state
-  if (!isAuthReady) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-900 text-white">
-        <RefreshCw className="w-8 h-8 animate-spin" />
-        <p className="ml-2">Loading...</p>
-      </div>
-    );
-  }
-
-  // Authentication UI
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 text-slate-100 p-4">
-        <div className="w-full max-w-md">
-          {/* Logo and Header */}
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Wallet className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold text-white mb-2">ExpenseFlow</h1>
-            <p className="text-slate-400">Smart finance tracking made simple</p>
-          </div>
-
-          {/* Auth Card */}
-          <div className="p-8 bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-2xl border border-slate-700">
-            <h2 className="text-2xl font-bold text-center mb-6 text-white">
-              {showLogin ? 'Welcome Back' : 'Create Account'}
-            </h2>
-            
-            <form onSubmit={showLogin ? handleLogin : handleSignup} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Email</label>
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full p-3 rounded-lg bg-slate-700/50 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Password</label>
-                <input
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-3 rounded-lg bg-slate-700/50 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                />
-              </div>
-
-              {error && (
-                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                  <p className="text-red-400 text-sm">{error}</p>
-                </div>
-              )
-
-              }<button
+      if (!user) {
+        return (
+          <div className="bg-slate-800 p-8 rounded-lg shadow-lg w-full max-w-md">
+            <h1 className="text-2xl font-bold mb-4">ExpenseFlow</h1>
+            {error && <p className="text-red-400 mb-2">{error}</p>}
+            <form onSubmit={handleLogin} className="space-y-4">
+              <input
+                type="email"
+                placeholder="Email"
+                className="w-full p-2 rounded bg-slate-700 border border-slate-600"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                className="w-full p-2 rounded bg-slate-700 border border-slate-600"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button
                 type="submit"
-                className="w-full p-3 font-semibold rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:transform-none"
-                disabled={loading}
+                className="w-full bg-indigo-500 hover:bg-indigo-600 p-2 rounded text-white font-semibold"
               >
-                {loading ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    Processing...
-                  </div>
-                ) : (
-                  showLogin ? 'Sign In' : 'Create Account'
-                )}
+                {loading ? "Loading..." : "Login"}
               </button>
             </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-sm text-slate-400 mb-4">
-                {showLogin ? "Don't have an account?" : "Already have an account?"}
-                <button
-                  onClick={() => {setShowLogin(!showLogin); setError('');}}
-                  className="ml-2 text-indigo-400 font-medium hover:text-indigo-300 transition-colors"
-                >
-                  {showLogin ? 'Sign Up' : 'Sign In'}
-                </button>
-              </p>
-            </div>
+            <button
+              onClick={handleSignup}
+              className="mt-4 w-full bg-purple-500 hover:bg-purple-600 p-2 rounded text-white font-semibold"
+            >
+              Signup
+            </button>
           </div>
+        );
+      }
+
+      return (
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">Welcome, {user.email}</h1>
+          <button
+            onClick={handleLogout}
+            className="mt-4 bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-white font-semibold"
+          >
+            Logout
+          </button>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  return (
-    <div className="min-h-screen bg-slate-900 text-white flex">
-      <h1 className="m-auto text-2xl">Expense Tracker App with Firebase</h1>
-    </div>
-  );
-};
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 
-export default App;
+  </script>
+</body>
+</html>
