@@ -16,7 +16,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center">
+<body class="bg-slate-900 text-white min-h-screen">
   <div id="root"></div>
 
   <script type="text/babel">
@@ -36,8 +36,8 @@
 
     // Initialize Firebase
     const app = firebase.initializeApp(firebaseConfig);
-    const auth = firebase.getAuth ? firebase.getAuth(app) : firebase.auth();
-    const db = firebase.getFirestore ? firebase.getFirestore(app) : firebase.firestore();
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
     function App() {
       const [user, setUser] = useState(null);
@@ -46,14 +46,37 @@
       const [error, setError] = useState("");
       const [loading, setLoading] = useState(false);
 
+      const [expenses, setExpenses] = useState([]);
+      const [title, setTitle] = useState("");
+      const [amount, setAmount] = useState("");
+      const [date, setDate] = useState("");
+
+      // Watch Firebase auth state
+      useEffect(() => {
+        return auth.onAuthStateChanged((firebaseUser) => {
+          setUser(firebaseUser);
+        });
+      }, []);
+
+      // Fetch expenses for user
+      useEffect(() => {
+        if (!user) return;
+        const unsubscribe = db
+          .collection("expenses")
+          .where("uid", "==", user.uid)
+          .onSnapshot((snapshot) => {
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setExpenses(data);
+          });
+        return unsubscribe;
+      }, [user]);
+
       // Login
       const handleLogin = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
-          const { signInWithEmailAndPassword } = firebase;
-          const userCredential = await signInWithEmailAndPassword(auth, email, password);
-          setUser(userCredential.user);
+          await auth.signInWithEmailAndPassword(email, password);
         } catch (err) {
           setError(err.message);
         }
@@ -61,13 +84,10 @@
       };
 
       // Signup
-      const handleSignup = async (e) => {
-        e.preventDefault();
+      const handleSignup = async () => {
         setLoading(true);
         try {
-          const { createUserWithEmailAndPassword } = firebase;
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          setUser(userCredential.user);
+          await auth.createUserWithEmailAndPassword(email, password);
         } catch (err) {
           setError(err.message);
         }
@@ -76,57 +96,149 @@
 
       // Logout
       const handleLogout = async () => {
-        const { signOut } = firebase;
-        await signOut(auth);
-        setUser(null);
+        await auth.signOut();
       };
 
+      // Add expense
+      const handleAddExpense = async (e) => {
+        e.preventDefault();
+        if (!title || !amount || !date) {
+          setError("Please fill all fields");
+          return;
+        }
+        await db.collection("expenses").add({
+          title,
+          amount: parseFloat(amount),
+          date,
+          uid: user.uid,
+          timestamp: new Date()
+        });
+        setTitle("");
+        setAmount("");
+        setDate("");
+      };
+
+      // Auth screen
       if (!user) {
         return (
-          <div className="bg-slate-800 p-8 rounded-lg shadow-lg w-full max-w-md">
-            <h1 className="text-2xl font-bold mb-4">ExpenseFlow</h1>
-            {error && <p className="text-red-400 mb-2">{error}</p>}
-            <form onSubmit={handleLogin} className="space-y-4">
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="bg-slate-800 p-8 rounded-xl shadow-lg w-full max-w-md">
+              <h1 className="text-2xl font-bold mb-4 text-center">ExpenseFlow</h1>
+              {error && <p className="text-red-400 mb-2">{error}</p>}
+              <form onSubmit={handleLogin} className="space-y-4">
+                <input
+                  type="email"
+                  placeholder="Email"
+                  className="w-full p-2 rounded bg-slate-700 border border-slate-600"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  className="w-full p-2 rounded bg-slate-700 border border-slate-600"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="submit"
+                  className="w-full bg-indigo-500 hover:bg-indigo-600 p-2 rounded text-white font-semibold"
+                >
+                  {loading ? "Loading..." : "Login"}
+                </button>
+              </form>
+              <button
+                onClick={handleSignup}
+                className="mt-4 w-full bg-purple-500 hover:bg-purple-600 p-2 rounded text-white font-semibold"
+              >
+                Signup
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      // Dashboard
+      return (
+        <div className="flex">
+          {/* Sidebar */}
+          <div className="w-64 bg-slate-800 h-screen p-4 flex flex-col justify-between">
+            <div>
+              <h2 className="text-xl font-bold mb-6">ExpenseFlow</h2>
+              <button
+                className="block w-full text-left p-2 hover:bg-slate-700 rounded"
+              >
+                Dashboard
+              </button>
+              <button
+                className="block w-full text-left p-2 hover:bg-slate-700 rounded"
+              >
+                Expenses
+              </button>
+              <button
+                className="block w-full text-left p-2 hover:bg-slate-700 rounded"
+              >
+                Add Expense
+              </button>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="w-full bg-red-500 hover:bg-red-600 p-2 rounded text-white font-semibold"
+            >
+              Logout
+            </button>
+          </div>
+
+          {/* Main */}
+          <div className="flex-1 p-8">
+            <h1 className="text-2xl font-bold mb-6">Welcome, {user.email}</h1>
+
+            {/* Add Expense Form */}
+            <form onSubmit={handleAddExpense} className="bg-slate-800 p-4 rounded mb-6 space-y-4">
               <input
-                type="email"
-                placeholder="Email"
+                type="text"
+                placeholder="Title"
                 className="w-full p-2 rounded bg-slate-700 border border-slate-600"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
               />
               <input
-                type="password"
-                placeholder="Password"
+                type="number"
+                placeholder="Amount"
                 className="w-full p-2 rounded bg-slate-700 border border-slate-600"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+              <input
+                type="date"
+                className="w-full p-2 rounded bg-slate-700 border border-slate-600"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
               />
               <button
                 type="submit"
                 className="w-full bg-indigo-500 hover:bg-indigo-600 p-2 rounded text-white font-semibold"
               >
-                {loading ? "Loading..." : "Login"}
+                Add Expense
               </button>
             </form>
-            <button
-              onClick={handleSignup}
-              className="mt-4 w-full bg-purple-500 hover:bg-purple-600 p-2 rounded text-white font-semibold"
-            >
-              Signup
-            </button>
-          </div>
-        );
-      }
 
-      return (
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Welcome, {user.email}</h1>
-          <button
-            onClick={handleLogout}
-            className="mt-4 bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-white font-semibold"
-          >
-            Logout
-          </button>
+            {/* Expenses List */}
+            <div className="bg-slate-800 p-4 rounded">
+              <h2 className="text-xl font-bold mb-4">Your Expenses</h2>
+              {expenses.length === 0 ? (
+                <p className="text-slate-400">No expenses yet</p>
+              ) : (
+                <ul className="space-y-2">
+                  {expenses.map(exp => (
+                    <li key={exp.id} className="flex justify-between p-2 bg-slate-700 rounded">
+                      <span>{exp.title} - ${exp.amount} ({exp.date})</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         </div>
       );
     }
